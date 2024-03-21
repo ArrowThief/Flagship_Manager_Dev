@@ -1,0 +1,135 @@
+﻿@using FlagShip_Manager.Objects;
+
+<style>
+    .Text{
+        -webkit-text-fill-color:lightgray;
+        white-space: pre-wrap;
+    }
+
+    .center-screen {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+<h3 class="Text">Welcome abord Flagship! </h3>
+<h3 class="Text">To get setup we need to setup three folders. </h3>
+<h3 class="Text">This only needs to be done once, after this you won't see this page again. </h3>
+<div >
+    <label class="Text">The work order folder only needs to be accessable from the client who is sending the render job and the server. </label>
+    <div style="display:table-row;">
+        
+        <div style="display:table-cell;"><label class="Text">Work order folder path:</label></div>
+        <div style="display:table-cell;"><input type="url" @bind-value=ctlPath @onclick="@(() => ctlDemo = false)" style="width:600px;" /> </div>
+        @if (ctlDemo)
+        {
+            <label style="position:relative; right:594px;">C:\Path to work order folder\</label>
+        }
+    </div>
+    <label class="Text">The temp render folder is only used in Blender renders. Only workers need to have access to this folder. Blender will always produce an output from its main output, this can cause problems if you are using the compositor to produce another output. This folder is just a storage location for the default outputs when they aren't used. If you do use that output then this temp folder won't be used.'</label>
+    <div style="display:table-row;">
+        <div style="display:table-cell;"><label class="Text">Temp Render folder path:</label></div>
+        <div style="display:table-cell;"><input type="url" @bind-value=StorageFolder @onclick="@(() => storageDemo = false)" style="width:600px;" /> </div>
+        @if (storageDemo)
+        {
+            <label style="position:relative; right:594px;">C:\Path to temp output folder\</label>
+        }
+    </div>
+    <label class="Text">The temp project folder is used to duplicate projects so that the original is never affected by flagship. Workers and the Server have to have access to this folder.</label>
+    <div style="display:table-row;">
+
+        <div style="display:table-cell;"><label class="Text">Temp project folder path:</label></div>
+        <div style="display:table-cell;"><input type="url" @bind-value=ProjectFolder @onclick="@(() => projectDemo = false)" style="width:600px;" /> </div>
+        @if (projectDemo)
+        {
+            <label style="position:relative; right:594px;">C:\Path to temp project storage folder\</label>
+        }
+    </div>
+    <button @onclick="@(() => ConfirmPaths())">Save</button>
+</div>
+
+@if (Confirm) {
+    <div class="center-screen">
+        <div style="background:green; width:contain; height:contain;">
+            <div>
+                <label>Worker Order Folder Path: </label>
+                <lable>@ctlPath</lable>
+            </div>
+            <div>
+                <label>Temp Render Folder Path: </label>
+                <lable>@StorageFolder</lable>
+            </div>
+            <div>
+                <lebel>Temp Project Folder Path: </lebel>
+                <lable>@ProjectFolder</lable>
+            </div>
+            <div style="justify-content:center; display:flex; "><button @onclick="() => AttemptSave()">Confirm</button></div>
+        </div>
+    </div>
+}
+@if (Fail) {
+    <div class="center-screen">
+        <div style="background:green;">
+            <label class="Text">@ErrorReadout</label>
+            <div style="justify-content:center; display:flex; "><button @onclick="() => Fail=false">OK!</button></div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public EventCallback Reload { get; set; }
+    private bool Confirm = false;
+    private bool Fail = false;
+    private string ctlPath = "";
+    private bool ctlDemo = true;
+    private string StorageFolder = "";
+    private bool storageDemo = true;
+    private string ProjectFolder = "";
+    private bool projectDemo = true;
+    private string ErrorReadout = "";
+
+    private void ConfirmPaths()
+    {
+        ErrorReadout = "";
+        if(ctlPath == "" || StorageFolder == "" || ProjectFolder == ""){
+            Confirm = false;
+            Fail = true;
+            ErrorReadout = "Somre or all file paths are missing. \nPlease enter corrected paths.";
+        }else{
+            Confirm = true;
+        }
+    }
+    private void AttemptSave(){
+        Confirm = false;
+        ErrorReadout = "";
+        bool error = false;
+
+        if(!Directory.Exists(ctlPath)){
+            ErrorReadout += "Missing work order directory. Please make sure the directory exits. \n";
+            error = true;
+        }
+        if (!Directory.Exists(StorageFolder))
+        {
+            ErrorReadout += "Missing temp output directory. Please make sure the directory exits.\n";
+            error = true;
+        }
+        if (!Directory.Exists(ProjectFolder))
+        {
+            ErrorReadout += "Missing temp projects directory. Please make sure the directory exits.\n";
+            error = true;
+        }
+
+        if (error){
+            Fail = true;
+            return;
+        }
+        else{
+            Path_Settings NewSettings = new Path_Settings(StorageFolder, ProjectFolder, ctlPath);
+            NewSettings.Save();
+            Thread.Sleep(1000);
+            Reload.InvokeAsync();
+        }
+    }
+}

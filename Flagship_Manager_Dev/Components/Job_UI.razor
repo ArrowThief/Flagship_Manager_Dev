@@ -1,0 +1,354 @@
+﻿@using FlagShip_Manager.Objects
+@using FlagShip_Manager.Helpers
+@using FlagShip_Manager.Management_Server
+@using FlagShip_Manager
+@using System.Timers
+@inject IJSRuntime RunJS
+<!--@bind-value="PriorityValue"-->
+<style>
+    .transparentButton {
+        background-color: #595959;
+        position:relative;
+        top:4px;
+        width: 1550px;
+        height: 20px;
+        border: hidden;
+        transition-property:all;
+        transition-duration:5s;
+    }
+</style>
+@{
+    var CBID = J.ID + "CB";
+    var PriorityID = J.ID + "Pri";
+    var BarID = J.ID + "bar";
+    var Arrow = J.ID + "arrow";
+
+    
+    <div id="@BarID" style="background: #424242; width: 100%; height:32px; clear: both;" hidden=@hidden>
+        <div class="TableCell" style="margin-left:4px; width: 45px; background: @GetStatusColor(J.Status); height:25px; border-radius:2px;"><img src="@GetStatusIcon(J.Status)" style="opacity:.5; width:20px; position:relative; bottom:1px;" /> </div>
+        <div class="TableCell" style="width:50px"><button class="ExpandButton" @onclick="() => OpenPanel()"><img style="transition:all; transition-duration:.2s" id="@Arrow" src="Images/arrow right.png" width="15" /></button></div>
+        <div style="width:45px; float:left; position:relative; top:1px; text-align: center;">
+            <img src=@GetAppIcon(J.RenderApp) style="width:30px"/>
+        </div>
+        <div class="TableCell" style="width: 400px;"> <label >@J.Name</label></div>
+        @if (J.Archive)
+        {
+            <div class="TableCell" style="width: 60px;">
+                <label id="@PriorityID" style="width:30px; text-align: center; background: none; border: hidden;">@J.Priority</label>
+            </div>
+        }else
+        {
+            <div class="TableCell" style="width: 60px;">
+                <input type="number" id="@PriorityID" style="width:30px; text-align: center; background: none; border: hidden;"
+                        value="@J.Priority"
+                @onfocusin="()=> SelectPriority(PriorityID)"
+                @onkeypress="e => JSRemoveFocus(e, PriorityID)"
+                @onfocusout="()=> JSCheckValue(PriorityID)">
+            </div>
+        }
+        @if (J.ShotAlert)
+        {
+            <div class="ProgressBarBorderRed"><div class="pB" style="background: @GetStatusColor(J.Status);width: @GetProgressBarWidth(J.Progress)px;"></div><label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:19px; left:1px;">@J.Progress%</label></div>
+        }
+        else
+        {
+            <div class="ProgressBarBorder"><div class="pB" style="background: @GetStatusColor(J.Status);width: @GetProgressBarWidth(J.Progress)px;"></div><label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:19px; left:1px;">@J.Progress%</label></div>
+        }
+        <div class="TableCell" style="width: 90px;">@J.CompletedFrames/@J.TotalFramesToRender</div>
+        <div class="TableCell" style="width: 80px;">@J.totalActiveTime.ToString(@"d\:hh\:mm")</div>
+        <div class="TableCell" style="width: 80px;">@J.RemainingTime.ToString(@"d\:hh\:mm")</div>
+
+        @if (Archive)
+        {
+            <div class="TableCell" style="width: 120px;">@J.ArchiveDate.ToString(@"MM/dd hh:mm")</div>
+        }
+        else
+        {
+            <div class="TableCell" style="width: 120px;">@J.CreationTime.ToString(@"MM/dd hh:mm")</div>
+        }
+        <div style=" width:140px; float:left; position:relative; top:1px; left:40px; text-align: left;">
+            <img style="opacity:.7;" src=@GetTypeIcon(J) width="20" />
+            <label style="font-size:14px; -webkit-text-fill-color: #E4E4E4;">@J.FileFormat</label>
+        </div>
+        <Job_Buttons UpdateJob="UpdateJob" UpdateList="UpdateList" Archive="J.Archive" _Status="J.Status" _JID="J.ID"></Job_Buttons>
+        <div class="TableCell" style="width:50px; position:relative; top:5px;">
+            <input id="@CBID" style="accent-color:#1E1E1E;" type="checkbox" @onchange="()=> ClickCheckBox(J)" />
+        </div>
+
+    </div>
+    
+   
+    <!--End Job header bar-->
+    var TaskDiv = J.ID + "H";
+    var TD = J.ID + "P";
+    var MaxA = J.ID + "MaxA"; 
+    
+    <div id="@TaskDiv" style="height:00px; overflow:hidden; transition-duration:.4s; transition-property:all;">
+        <div id="@TD" style="position:relative; bottom:272px; transition-duration:.4s; transition-property:all;">
+            <div style="width:1520px; height:4px;"></div>
+            <div style="width:100%; height: 25px; background: #595959;">
+                    <label style="padding-left:1%; position:relative; top:2px; font-weight:800;">Tasks</label>
+                    <label style="padding-left:64.5%; position:relative; top:2px; font-weight:800;">Worker Black List</label>
+                    <label style="padding-left:3.5%; position:relative; top:2px; font-weight:800;">Meta Data</label>
+            </div>
+            <div style="display:inline-flex;">
+               
+                <div>
+                    <Job_TaskList UpdateJob="UpdateJob" LogViewCall="LogOpen" RenderTasks="@J.renderTasks.ToArray()" JID="@J.ID" CreationTime="@J.CreationTime"></Job_TaskList>
+                </div>
+                <div >
+                    <Job_BlackList UpdateJob="UpdateJob" Status="@J.Status" GPUrequired="@J.GPU" JID="@J.ID" renderApp="@J.RenderApp" idBlackList="@J.WorkerBlackList" ShowButton="@J.finished"></Job_BlackList>
+                </div>
+                <div>
+                    <Job_MetaData AverageFPS="@J.TimePerFrame" MachineHours="@J.MachineHours" JobID="@J.ID" GPU="@J.GPU" Overwrite="@J.Overwrite" OutputPath="@J.outputPath" Preset="@J.RenderPreset" ProjectPath="@J.WorkingProject" TempProjectPath="@J.Project"></Job_MetaData>
+                </div>
+            </div>
+            <button class="transparentButton" @onclick="() => MaxamizeTasklist(false)">
+                <img id="@MaxA" src="Images/arrow down.png" style="width:24px; position:relative; bottom: 4px; transition:all; transition-duration:.5s;" />
+            </button>
+        </div>
+    </div>
+    <div style="width:1520px; height:4px;"></div>
+}
+@code {
+    [Parameter]
+    public Job J { get; set; } = new Job();
+    [Parameter]
+    public EventCallback<renderTask> LogOpen { get; set; }
+    [Parameter]
+    public EventCallback<int> CheckBox { get; set; }
+    //[Parameter]
+    //public EventCallback<int> expandSize { get; set; }
+    [Parameter]
+    public EventCallback UpdateList { get; set; }
+    [Parameter]
+    public bool hidden { get; set; }
+    [Parameter]
+    public bool Archive { get; set; } = false;
+
+    private IJSObjectReference JS;
+    private Timer? time;
+    private string BlackListActive = "none";
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            BuildJS();
+            time = new Timer();
+            //Set the time interval.
+            time.Interval = 500;
+            time.Elapsed += OnTimeInterval;
+            time.AutoReset = true;
+            // Start the timer.
+            time.Enabled = true;
+        }
+        //base.OnAfterRender(firstRender);
+    }
+    private async void OnTimeInterval(object sender, ElapsedEventArgs e)
+    {
+        if (J.UpdateUI)
+        {
+            await InvokeAsync(() => StateHasChanged());
+        }
+    }
+    private void UpdateJob(){
+        InvokeAsync(() => StateHasChanged());
+    }
+    public void Dispose()
+    {
+        // While navigating to other components, Dispose method will be called and clean up the Timer function.
+        time?.Dispose();
+    }
+    public string GetStatusIcon(int status)
+    {
+        switch (status)
+        {
+            case (0):
+                return "Images/Status/Queueue_whitey.png";//Queued
+            case (1):
+                return "Images/Status/Render_Whitey.png"; //Rendering
+            case (2):
+                return "Images/Status/Finished_Whitey.png"; //Finished
+            case (3):
+                return "Images/Status/Pause_whitey.png"; //Paused
+            case (4):
+                return "Images/Status/Failed_whitey.png";//Failed
+            case (5):
+                return "Images/Status/Cancelled_whitey.png";//Cancelled
+            default:
+                return "Images/Status/Failed_whitey.png";//Failed
+        }
+    }
+    public string GetStatusColor(int status)
+    {
+        switch (status)
+        {
+            case (0):
+                return "#7E469E";
+            case (1):
+                return "#547AB5";
+            case (2):
+                return "#09B18A";
+            case (3):
+                return "#C78753";
+            case (4):
+                return "#C36670";
+            case (5):
+                return "#595959";
+            default:
+                return "#FF0000";
+        }
+    }
+    public string GetAppIcon(string _appType)
+    {
+        if (_appType.ToLower() == "ae") return @"Images/App/AE.png";
+        else if (_appType.ToLower() == "fusion") return @"Images/App/fusion.png";
+        else if (_appType.ToLower() == "blender") return @"Images/App/blender.png";
+        else return "ERROR";
+    }
+    public string SimplifyTime(TimeSpan _time)
+    {
+        string _return = "";
+
+        if (_time == TimeSpan.Zero) return "00:00";
+        else if (_time.TotalHours > 24) return Math.Round(_time.TotalDays) + " Days";
+        else _time.ToString(@"mm\:ss\.ff");
+
+        return _return;
+    }
+    public string PauseButtonChange(int _status)
+    {
+        if (_status == 3) return "Resume";
+        else return "Pause";
+    }
+    public string GetTypeIcon(Job _j)
+    {
+        if (_j.vid)
+        {
+            return "Images/Video White.png";
+        }
+        else
+        {
+            return "Images/Image Sequence White.png";
+        }
+
+    }
+    private void OpenCloseBlacklist()
+    {
+        if (BlackListActive == "none")
+        {
+            BlackListActive = "block";
+        }
+        else
+        {
+            BlackListActive = "none";
+        }
+    }
+    public void ArchiveJob(int _ID)
+    {
+        var j = jobManager.jobList.Find(job => job.ID == _ID);
+        //Job JobtoArchive = jobManager.jobList[JobIndex];
+        if (!j.finished) WebButtons.CancelJob(_ID);
+        //JobtoArchive.Selected = false;
+        //jobManager.jobArchive.Add(JobtoArchive);
+        jobManager.ActiveIDList.Remove(_ID);
+        jobManager.ArchiveIDList.Add(_ID);
+        //jobManager.jobList.RemoveAt(JobIndex);
+        try
+        {
+            Database.UpdateDBFile = true;
+        }
+        catch (Exception EX)
+        {
+            Console.WriteLine("ERROR: " + EX);
+        }
+        UpdateList.InvokeAsync();
+    }
+    internal async Task BuildJS()
+    {
+        JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Pages/DivGUI.razor.js");
+    }
+    internal async Task JSRemoveFocus(KeyboardEventArgs e, string _ID)
+    {
+        if (e.Key == "Enter")
+        {
+            await JS.InvokeVoidAsync("removeFocus", _ID);
+        }
+    }
+    internal async Task JSCheckValue(string _ID)
+    {
+        J.Priority = await JS.InvokeAsync<int>("CheckValue", _ID, J.Priority);
+    }
+    public async Task ClickCheckBox(Job _j)
+    {
+        //DivJobUI.RenderLogs = _Log;
+        await CheckBox.InvokeAsync(_j.ID);
+        //if (_j.selected) _j.selected = false;
+        //else _j.selected = true;
+        //DivJobUI.LogDisplay = "block";
+        //StateHasChanged();
+    }
+    public double GetProgressBarWidth(double _num){
+        //Console.WriteLine(Convert.ToString((_num * 7) / 10));
+        return (_num * 7) / 10;
+    }
+    internal async Task SelectPriority(string _ID)
+    {
+        await JS.InvokeVoidAsync("SelectPriorityValue", _ID);
+    }
+    internal async Task JSFunctiion(string _function = "", string arg1 = "", string arg2 = "")
+    {
+        if (arg1 != "")//function has first arg
+        {
+            if (arg2 != "")//function has second args
+            {
+                await JS.InvokeVoidAsync(_function, arg1, arg2);
+            }
+            else//Only first arg
+            {
+                await JS.InvokeVoidAsync(_function, arg1);
+            }
+        }
+        else //No args
+        {
+            await JS.InvokeVoidAsync(_function);
+        }
+    }
+    internal async void OpenPanel()
+    {
+        if (Archive) await JS.InvokeVoidAsync("expandTaskList", J.ID, "2");
+        else await JS.InvokeVoidAsync("expandTaskList", J.ID, "3");
+
+        await UpdateList.InvokeAsync();
+    }
+    public async void MaxamizeTasklist(bool colapse)
+    {
+        if (J.renderTasks.Count() < 8) return;
+        /*if (GUIinfo.extend)
+        {
+            if (GUIinfo.TaskArrow == "Images/arrow down.png" && !colapse)
+            {
+                GUIinfo.TaskArrow = "Images/arrow up.png";
+                GUIinfo.TaskListClass = "MaxTaskList";
+                GUIinfo.BlackListClass = "FullList";
+
+            }
+            else
+            {
+                GUIinfo.TaskArrow = "Images/arrow down.png";
+                GUIinfo.TaskListClass = "TaskList";
+                GUIinfo.BlackListClass = "ScrollList";
+
+            }
+            Notes: These three have been changed to be controlled through, JS Thier respective IDs are:
+            J.ID + MaxA
+            J.ID + "TL"
+            J.ID + "BL"
+        }*/
+        if (Archive) await JS.InvokeVoidAsync("maximizeTaskList", J.ID, "2");
+        else await JS.InvokeVoidAsync("maximizeTaskList", J.ID, "3");
+        await UpdateList.InvokeAsync();
+    }
+}
+

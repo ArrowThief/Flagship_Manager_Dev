@@ -1,0 +1,39 @@
+﻿@page "/"
+@namespace FlagShip_Manager.Pages
+@using Flagship_Manager_Dev;
+
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = "_Layout";
+}
+<component type="typeof(App)" render-mode="ServerPrerendered" />
+<!--
+        function getScreenHeight() {
+        return window.innerHeight || document.documentElement.clientHeight;
+    }
+    function copyToClipboard(_text) {
+        try
+        {
+            navigator.clipboard.writeText(_text)
+            console.log("Copied the text: " + _text);
+        }    catch(){
+            console.log('Could not copy text: ', err);
+        }
+    }
+    function removeFocus(ID) {
+        console.log("Called Remove focus");
+        console.log(ID)
+        ele = document.getElementById(ID);
+        console.log(ele)
+        ele.blur();
+    }
+    function WriteTest(){
+        console.log("Hello world")
+    }
+    function uncheckAllCheckboxes() {
+        var checkboxes = document.querySelectorAll("input[type='checkbox']");
+        for (var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = false;
+        }
+    }
+-->

@@ -1,0 +1,66 @@
+﻿@page "/"
+@using FlagShip_Manager
+@using FlagShip_Manager.Management_Server;
+@inject NavigationManager NavigationManager
+
+@*
+@implements IDisposable
+@using System.Timers
+@using FlagShip_Manager.Objects
+@using FlagShip_Manager
+@using FlagShip_Manager.Helpers
+@using FlagShip_Manager.Components
+@inject IJSRuntime jsRuntime
+*@
+@if(jobManager.Setup){
+    <PageTitle>ShotList Page</PageTitle>
+    <DivGUI></DivGUI>
+
+}
+else{
+    <Settings Reload="() => Reload()"></Settings>
+}
+
+@code {
+    private void Reload(){
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+    //public Job[] CurrentList = new Job[0];
+        @*
+   
+    private int currentCount = 0;
+    private Timer? time;
+
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            time = new Timer();
+            //Set the time interval.
+            time.Interval = 500;
+            time.Elapsed += OnTimeInterval;
+            time.AutoReset = true;
+            // Start the timer.
+            time.Enabled = true;
+        }
+        base.OnAfterRender(firstRender);
+    }
+    private async void OnTimeInterval(object sender, ElapsedEventArgs e)
+    {
+        IncrementCount();
+        await InvokeAsync(() => StateHasChanged());
+    }
+    public void Dispose()
+    {
+        // While navigating to other components, Dispose method will be called and clean up the Timer function.
+        time?.Dispose();
+    }
+   
+     *@
+}
+

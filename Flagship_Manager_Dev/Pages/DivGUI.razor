@@ -1,0 +1,687 @@
+﻿@page "/DivGUI"
+@using System.Timers
+@using FlagShip_Manager.Objects
+@using FlagShip_Manager
+@using FlagShip_Manager.Helpers
+@using Flagship_Manager_Dev.Components
+@inject IJSRuntime RunJS
+
+<style>
+    ::-webkit-scrollbar {
+        scroll-behavior: smooth;
+        width: 6px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: #2D2D2D;
+        border-left: 1px solid #424242;
+        border-right: 1px solid #424242;
+        border-radius: 2px;
+
+    }
+
+    ::-webkit-scrollbar-track {
+        background-color: #424242;
+        border-radius: 0px;
+    }
+
+    .Worker_List_Bar {
+        position:relative;
+        z-index: 300;
+        width: 1550px;
+        height: 35px;
+        background: #595959;
+        text-align: center;
+        padding: 7px;
+    @* border-radius: 10px 10px 0px 0px;*@
+    }
+    .headerClass {
+
+        position:center;
+        float: left;
+        margin-top:6px;
+        -webkit-text-fill-color: #E4E4E4;
+        font-family:Roboto;
+        font-size:16px;
+        font-weight:500;
+        background: #1E1E1E;
+        text-align: center;
+    }
+    .firstheaderClass {
+        float: left;
+        position: inherit;
+        margin-left:4px;
+        margin-top: 6px;
+        -webkit-text-fill-color: #E4E4E4;
+        font-family: Roboto;
+        font-size: 16px;
+        font-weight: 500;
+        background: #1E1E1E;
+        text-align: center;
+    }
+
+    .Background {
+        transition-duration: 0.5s;
+        transition-property: all;
+        background: #1E1E1E;
+        width: 1550px;
+        border-radius: 0px;
+    }
+    .QueueBarOpen {
+        position: relative;
+        z-index: 300;
+        width: 1550px;
+        height: 35px;
+        background: #595959;
+        text-align: center;
+        padding: 7px;
+    }
+    .ArchiveBar {
+        position: relative;
+        z-index: 300;
+        width: 1550px;
+        height: 35px;
+        background: #595959;
+        text-align: center;
+        padding: 7px;
+        <!--border-radius: 10px 10px 0px 0px;-->
+    }
+    .sort-link {
+        cursor: pointer;
+    }
+    .MinusButtons {
+        position:relative;
+        bottom:1px;
+        background: #1E1E1E;
+        -webkit-text-fill-color: #E4E4E4;
+        height: 25px;
+        width: 70px;
+        font-size: 10px;
+        align-items: center;
+    }
+    .BatchButtonsColor{
+        background: #262626;
+        border: solid;
+        border-width:2px;
+
+        border-color: #595959;
+        -webkit-text-fill-color: #E4E4E4;
+    }
+    .BatchButtonsColor:hover{
+        background: #4d4d4d
+    }
+    .BatchButtons {
+
+        height: 25px;
+        width: 70px;
+        border-radius: 15px;
+        font-size: 10px;
+        align-items: center;
+        margin-left: 1px;
+        margin-right: 1px;
+        position: relative;
+        bottom: 1.5px;
+    }
+
+    .BatchButtons:active {
+        transition-duration: 0.1s;
+        transition-property: all;
+        background: #737370;
+        height: 23px;
+        margin-left: 2px;
+        margin-right: 2px;
+        width: 68px;
+    }
+    
+    .MiniJobButtons {
+        display:table-cell;
+        background: #262626;
+        border: solid;
+        border-color: #595959;
+        border-width: 2px;
+        -webkit-text-fill-color: #E4E4E4;
+        height: 25px;
+        width: 34px;
+        border-radius: 15px;
+        font-size: 10px;
+        align-items: center;
+        position: relative;
+        bottom: 1.5px;
+    }
+
+    .MiniJobButtons:active {
+        background: #4d4d4d; 
+        height: 24px;
+        width: 32px;
+        border-radius: 15px;
+        margin-left: 1px;
+        margin-right: 1px;
+    }
+    .MiniJobButtons:hover{
+            background: #4d4d4d
+    }
+
+    .barButtons{
+        border:hidden;
+        background: #595959;
+        width: inherit;
+        height: inherit;
+        position: relative;
+        bottom: 6px;
+        right: 6px;
+    }
+    
+    .ActiveBatchMenu{
+        position:relative;
+        left:1555px; 
+        height:150px; 
+        width:40px;
+    }
+    
+    .fade-in {
+    animation: fadeIn .2s;
+    
+    }
+    .infoPanel{
+        z-index:5000;
+        display:none;
+        position:absolute;
+        top:50%;
+        left:50%;
+        transform: translate(-50%, -50%);
+        height:330px;
+        width:600px;
+        background: #595959;
+    }
+
+    .hover_Pointer:hover{
+      cursor: pointer;  
+    }
+    .InfoText{
+        font-family:Roboto;
+        padding-left:10px;
+        -webkit-text-fill-color: #E4E4E4;
+        line-height:12pt;
+    }
+    .Animate{
+        transition-duration: .2s;
+        transition-property: all;
+        transition-timing-function: linear;
+    }
+    
+</style>
+@{
+}<div style="overflow:clip; height:auto; width:1600px;">
+    <div style="display:block;background-color:#1E1E1E; width:1550px; height:110px;">
+        <img style="width:380px;" src="/Images/Flagship_Header_Logo-White.png" />
+        <div class="hover_Pointer" @onclick='() => JSFunctiion("OpenInfo","4")' style="background:white; height:30px; width:30px; position:relative; left:1500px; bottom:55px; border-radius:15px; text-align:center;">
+            <p style=" line-height:30px; font-family:'Times New Roman'; font-weight:bold; font-style:italic;  font-size:28px; ">i</p>
+        </div>
+    </div>
+
+    <button id="1b" class="Worker_List_Bar Animate" @onclick='() => OpenCloseList("1")'>Worker List: @CountOnlineWorkers()</button>
+    <div id="1h" class="Animate" style="overflow:hidden; height:0px;">
+        <div id="1p" class="Animate" style="position:relative; bottom:@WL_StartHeight;">
+            <!--List position, control with bottom-->
+            <div style="display:block; -webkit-text-fill-color:#E4E4E4; background:#1E1E1E; width:1550px; height: 36px;">
+                <!--Header goes here-->
+                <div class="headerClass sort-link" style="width:150px">Worker Name</div>
+                <div class="headerClass sort-link" style="width:100px">Status</div>
+                <div class="headerClass sort-link" style="width:50px">Main</div>
+                <div class="headerClass sort-link" style="width:100px;">Render Apps</div>
+                <div class="headerClass sort-link" style="width:50px">GPU</div>
+                <div class="headerClass sort-link" style="width:140px">Buttons</div>
+                <div class="headerClass sort-link" style="width:120px">Last Seen</div>
+                <div class="headerClass sort-link" style="width:840px">Log</div>
+            </div>
+
+            <div class="Background" style="height:auto;">
+                <!--<DivArchiveJobUI></DivArchiveJobUI>-->
+                <Worker_List></Worker_List>
+            </div>
+        </div>
+    </div>
+
+    <button id="2b" class="ArchiveBar Animate" style="" @onclick='() =>  OpenCloseList("2", jobManager.ArchiveIDList.ToArray())'>Archive: @jobManager.ArchiveIDList.Count()</button>
+    <div id="2h" class="Animate" style="overflow:hidden; display:block; height:0px;">
+        <!--List height-->
+        <div id="2p" class="Animate" style="position:relative; bottom:@AR_StartHeight;">
+            <!--List position, control with bottom-->
+            <div style=" display:block; -webkit-text-fill-color: #E4E4E4; background:#1E1E1E; width:1550px; height: 36px;">
+                <!--Header goes here-->
+                <div class="firstheaderClass sort-link" style="width:45px" @onclick="() => listSort(true,0)">Status</div>
+                <div class="headerClass sort-link" style="width:50px"></div>
+                <div class="headerClass sort-link" style="width:45px" @onclick="() => listSort(true,1)">App</div>
+                <div class="headerClass sort-link" style="width:400px;" @onclick="() => listSort(true,2)">Shot Name</div>
+                <div class="headerClass sort-link" style="width:60px" @onclick="() => listSort(true,3)">Priority</div>
+                <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(true,4)">Progress</div>
+                <div class="headerClass sort-link" style="width:90px" @onclick="() => listSort(true,5)">Frames</div>
+                <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(true,6)">Active</div>
+                <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(true,7)">Remaining</div>
+                <div class="headerClass sort-link" style="width:120px" @onclick=" ()=> listSort(true,8)">Archive Time</div>
+                <div class="headerClass sort-link" style="width:140px" @onclick=" ()=> listSort(true,9)">Format</div>
+                <div class="headerClass" style="width:80px;"></div>
+                <div id="21" class="headerClass" style="opacity:0;">
+                    <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(8, true)">Re-Queue</button></div>
+                    <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(4, true)">Restart</button></div>
+                    <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(7, true)">Delete</button></div>
+                </div>
+                <div class="headerClass">
+                    <input id="2cb" type="checkbox" style="width:52px;" @onchange='(e) => SelectAllJobs(e,"21", true)' />
+                </div>
+            </div>
+
+            <div class="Background" style=" display:block;">
+                <!--<DivArchiveJobUI></DivArchiveJobUI>-->
+
+                <Job_List FullUpdate="UpdateAll" CheckID="ArchiveSelectionChange" Archive="true"  JobIDList="@jobManager.ArchiveIDList"></Job_List>
+               
+            </div>
+        </div>
+    </div>
+        
+    <button id="3b" class="QueueBarOpen Animate" @onclick='() => OpenCloseList("3", jobManager.ActiveIDList.ToArray())'>Active Queue: @jobManager.ActiveIDList.Count()</button>
+    <div id="3h" class="Animate" style="overflow:hidden; display:block; height:0px;">
+        <div id="3p" class="Animate" style="position:relative; bottom:@AQ_StartHeight;">
+            <div style="display:block; -webkit-text-fill-color: #E4E4E4; background:#1E1E1E; width:1550px; height: 36px;">
+                <!--Header goes here-->
+                <div class="firstheaderClass sort-link" style="width:45px" @onclick="() => listSort(false, 0)">Status</div>
+                <div class="headerClass sort-link" style="width:50px"></div>
+                <div class="headerClass sort-link" style="width:45px" @onclick="() => listSort(false,1)">App</div>
+                <div class="headerClass sort-link" style="width:400px;" @onclick="() => listSort(false, 2)">Shot Name</div>
+                <div class="headerClass sort-link" style="width:60px" @onclick="() => listSort(false,3)">Priority</div>
+                <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(false,4)">Progress</div>
+                <div class="headerClass sort-link" style="width:90px" @onclick="() =>listSort(false,5)">Frames</div>
+                <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(false,6)">Active</div>
+                <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(false,7)">Remaining</div>
+                <div class="headerClass sort-link" style="width:120px" @onclick=" ()=> listSort(false,8)">Submit Time</div>
+                <div class="headerClass sort-link" style="width:140px" @onclick=" ()=> listSort(false,9)">Format</div>
+                <div class="headerClass" style="width:10px;"></div>
+                <div id="31" class="headerClass" style="opacity:0;">
+                    <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(1)">Cancel</button></div>
+                    <div class="BatchDivs">
+                        <button class="MiniJobButtons" @onclick="() => RunBatchAction(2)"><img style="width:15px; position:relative; bottom:1px;" src="Images/Status/Pause.png" /></button>
+                        <button class="MiniJobButtons" @onclick="() => RunBatchAction(6)"><img style="width:15px; position:relative; bottom:1px;" src="Images/Status/Render.png" /></button>
+                    </div>
+                    <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(3)">Restart</button></div>
+                    <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(5)">Archive</button></div>
+                </div>
+                <div class="headerClass">
+                    <div style="width:52px;"></div>
+                    <input id="3cb" type="checkbox" @onchange='(e) => SelectAllJobs(e, "31")' />
+                </div>
+            </div>
+            <div class="Background" style="display:block; height:auto;">
+                <Job_List FullUpdate="UpdateAll" CheckID="ActiveSelectionChange" Archive="false" JobIDList="@jobManager.ActiveIDList"></Job_List>
+            </div>
+        </div>
+    </div>
+
+    <div id="4" class="infoPanel">
+        <button @onclick='() => JSFunctiion("OpenInfo","4")' style="float:right; width:20px; height:20px; text-align:center;"><p style="position:relative; bottom:6px; right:3px;">X</p></button>
+        <p class="InfoText" style="text-align:center; line-height:30pt; top:30px;">Flagship Render Manager</p>
+        <p class="InfoText">Version: 0.86 - Beta</p>
+        <p class="InfoText">Command Path: @jobManager.ActiveSettings.CtlFolder</p>
+        <p class="InfoText" style="line-height:30pt;">Credits:</p>
+        <p class="InfoText">Coding by: Nick Siebold</p>
+        <p class="InfoText">Graphics by: Dustin Solomon and Jesse Daniel</p>
+        <p class="InfoText">QA testing by: Janna Daniel</p>
+        <p class="InfoText">Contact: IT@mutinyfx.com</p>
+        <p class="InfoText"></p>
+        <input class="InfoText" type="checkbox" style="background-color:green;" @bind-value="viewDebug" />Show Debug options
+    </div>
+
+    @if(viewDebug)
+    {
+        <div>
+            <label style="color:white;">Worker Debug Menu:</label>
+            <button @onclick="() => FSDebug.AddDummyWorker()">Add Dummy Worker</button>
+            <button @onclick="() => FSDebug.AddLongDummyWorker()">Add Long Dummy Worker</button>
+            <button @onclick="() => FSDebug.ClearrDummyWorkers()">Clear all Dummies</button>
+        </div>
+    }
+</div>
+
+@code 
+{
+    private bool viewDebug = false;
+    private string WL_StartHeight = (WorkerServer.WorkerList.Count() * 36 + 36) + "px";
+    private string AR_StartHeight = (jobManager.ArchiveIDList.Count() * 36 + 36) + "px";
+    private string AQ_StartHeight = (jobManager.ActiveIDList.Count() * 36 + 36) + "px";
+
+    private int CurrentWorkerCount;
+    private int CurrentArchiveCount;
+    private int CurrentActiveCount;
+
+    private bool wOpen = false;
+    private bool arOpen = false;
+    private bool acOpen = false;
+    private int JSFail = 0;
+    private int SortIndex = 2;
+
+    private List<int> ActiveSelection = new List<int>();
+    private List<int> ArchiveSelection = new List<int>();
+
+    private Timer time = new Timer();
+
+    public IJSObjectReference JS;
+
+    protected async override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await BuildJS();
+            CurrentWorkerCount = WorkerServer.WorkerList.Count();
+            CurrentArchiveCount = jobManager.ArchiveIDList.Count();
+            CurrentActiveCount = jobManager.ActiveIDList.Count();
+            //time = new Timer();
+            //Set the time interval.
+            time.Interval = 500;
+            time.Elapsed += OnTimeInterval;
+            time.AutoReset = true;
+            // Start the timer.
+            time.Enabled = true;
+        }
+        //base.OnAfterRender(firstRender);
+    }
+    private async void OnTimeInterval(object sender, ElapsedEventArgs e)
+    {
+        if (wOpen)
+        {
+            await JSFunctiion("UpdateWorkerList");
+        }
+
+        await JSFunctiion("CheckHeight", acOpen.ToString());
+        await InvokeAsync(() => StateHasChanged());
+    }
+    public void Dispose()
+    {
+        // While navigating to other components, Dispose method will be called and clean up the Timer function.
+        time?.Dispose();
+    }
+    public async void UpdateAll(){
+        await JSFunctiion("UpdateListHeights");
+        await InvokeAsync(() => StateHasChanged());
+    }
+    public async void ActiveSelectionChange(string _Passed)
+    {
+        string[] Split = _Passed.Split(",");
+        int ID = int.Parse(Split[0]);
+        bool Checked = bool.Parse(Split[1]);
+        if (!Checked)
+        {
+            await JS.InvokeVoidAsync("SetCheckValue", $"{ID}CB", "false");
+            await JSFunctiion("ChangeBarColor", ID + "bar", "false");
+            try { ActiveSelection.Remove(ID); }
+            catch(Exception Ex)
+            {
+                Console.WriteLine($"Failed to remove: {ID}");
+            }
+            Console.WriteLine($"Removing ID: {ID}");
+        }
+        else if(Checked)
+        {
+            if (!ActiveSelection.Contains(ID)) ActiveSelection.Add(ID);
+            else Console.WriteLine("Attempted to add ID twice");
+            await JSFunctiion("ChangeBarColor", ID + "bar", "true");
+            Console.WriteLine($"Adding ID: {ID}");
+        }
+        if (ActiveSelection.Count() > 0)
+        {
+            await JSFunctiion("SetElementOpacity", "31", "100");
+            await JSFunctiion("EnableDisableElement", "31", "false");
+        }
+        else
+        {
+            await JSFunctiion("SetElementOpacity", "31", "0");
+            await JSFunctiion("EnableDisableElement", "31", "true");
+        }
+        if (ActiveSelection.Count() == jobManager.ActiveIDList.Count())
+        {
+            await JSFunctiion("SetCheckValue", "3cb", "true");
+        }
+        else
+        {
+            await JSFunctiion("SetCheckValue", "3cb", "false");
+        }
+        Console.WriteLine($"Currently in List");
+        foreach(int S in ActiveSelection)
+        {
+            Console.WriteLine($"{S}");
+        }
+        listSort(false);
+    }
+    public async void ArchiveSelectionChange(string _Passed)
+    {
+        string[] Split = _Passed.Split(",");
+        int ID = int.Parse(Split[0]);
+        bool Checked = bool.Parse(Split[1]);
+        if (!Checked)
+        {
+            ArchiveSelection.Remove(ID);
+            await JSFunctiion("ChangeBarColor", ID + "bar", "false");
+            await JSFunctiion("SetCheckValue", ID + "CB", "false");
+        }
+        else if(Checked)
+        {
+            ArchiveSelection.Add(ID);
+            await JSFunctiion("ChangeBarColor", ID + "bar", "true");
+        }
+        if (ArchiveSelection.Count() > 0)
+        {
+            await JSFunctiion("SetElementOpacity", "21", "100");
+            await JSFunctiion("EnableDisableElement", "21", "false");
+        }
+        else
+        {
+            await JSFunctiion("SetElementOpacity", "21", "0");
+            await JSFunctiion("EnableDisableElement", "31", "true");
+        }
+        if (ArchiveSelection.Count() == jobManager.ArchiveIDList.Count())
+        {
+            await JSFunctiion("SetCheckValue", "2cb", "true");
+        }
+        else
+        {
+            await JSFunctiion("SetCheckValue", "2cb", "false");
+        }
+        listSort(true);
+    }
+    public static int CountOnlineWorkers(){
+        int Online = 0;
+        foreach(WorkerObject W in WorkerServer.WorkerList){
+            if (W.Status != 7) Online++;
+        }
+        return Online;
+    }
+    internal async Task JSFunctiion(string _function = "", string arg1 = "", string arg2 = "")
+    {
+        try
+        {
+            if (arg1 != "")//function has first arg
+            {
+                if (arg2 != "")//function has second args
+                {
+                    await JS.InvokeVoidAsync(_function, arg1, arg2);
+                }
+                else//Only first arg
+                {
+                    await JS.InvokeVoidAsync(_function, arg1);
+                }
+            }
+            else //No args
+            {
+                await JS.InvokeVoidAsync(_function);
+            }
+        }
+        catch (Exception Ex)
+        {
+            JSFail++;
+            if (JSFail > 3)
+            {
+                Console.WriteLine($"JS error disposing page.\nCurrent function call: {_function}\n\n{Ex}");
+                Dispose();
+            }
+        }
+    }
+    internal async Task BuildJS()
+    {
+        try {
+            JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Pages/DivGUI.razor.js");
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("Failed to define JS\n" + ex);
+        }
+    }
+    internal async Task SelectAllJobs(ChangeEventArgs eve, string UI_ID, bool _Archive = false)
+    {
+        int[] temp;
+        if (_Archive) temp = jobManager.ArchiveIDList.ToArray();
+        else temp = jobManager.ActiveIDList.ToArray();
+        bool selected = bool.Parse(eve.Value.ToString());
+        if (selected)
+        {
+            await JSFunctiion("SetElementOpacity", UI_ID, "100");
+            await JSFunctiion("EnableDisableElement", UI_ID, "false");
+        }
+        else
+        {
+            await JSFunctiion("SetElementOpacity", UI_ID, "0");
+            await JSFunctiion("EnableDisableElement", UI_ID, "true");
+        }
+        if (_Archive) ArchiveSelection.Clear();
+        else ActiveSelection.Clear();
+
+        foreach(int jid in temp)
+        {
+            //Job SelectedJob = jobManager.jobList.Find(J => J.ID == jid);
+            //SelectedJob.selected = selected;
+            if (selected)
+            {
+                JSFunctiion("ChangeBarColor", jid + "bar", "true");
+                JSFunctiion("SetCheckValue", jid + "CB", "true");
+
+                if (_Archive)
+                {
+                    ArchiveSelection.Add(jid);
+                }
+                else ActiveSelection.Add(jid);
+            }
+            else
+            {
+                await JSFunctiion("SetCheckValue", jid + "CB", "false");
+                await JSFunctiion("ChangeBarColor", jid + "bar", "false");
+            }
+        }
+        InvokeAsync(() => StateHasChanged());
+    }
+    internal async Task RunBatchAction(int _Action, bool _Archive = false)
+    {
+        if (_Archive)
+        {
+            WebButtons.RunAction(_Action, ArchiveSelection.ToArray());
+        }
+        else
+        {
+            WebButtons.RunAction(_Action, ActiveSelection.ToArray());
+        }
+
+        foreach (int jid in jobManager.ArchiveIDList)
+        {
+            //await JSFunctiion("SetCheckValue", "2cb", "false");
+            await JSFunctiion("SetCheckValue", jid + "CB", "false");
+            await JSFunctiion("ChangeBarColor", jid + "bar", "false");
+        }
+        foreach (int jid in jobManager.ActiveIDList)
+        {
+            //await JSFunctiion("SetCheckValue", "3cb", "false");
+            await JSFunctiion("SetCheckValue", jid + "CB", "false");
+            await JSFunctiion("ChangeBarColor", jid + "bar", "false");
+        }
+        await JSFunctiion("SetElementOpacity", "21", "0");
+        await JSFunctiion("EnableDisableElement", "21", "true");
+        await JSFunctiion("SetCheckValue", "2cb", "false");
+        await JSFunctiion("SetElementOpacity", "31", "0");
+        await JSFunctiion("EnableDisableElement", "31", "true");
+        await JSFunctiion("SetCheckValue", "3cb", "false");
+
+        await JSFunctiion("UpdateListHeights");
+
+        InvokeAsync(() => StateHasChanged());
+        ActiveSelection.Clear();
+        ArchiveSelection.Clear();
+
+
+    }
+    internal async Task OpenCloseList(string _ListID, int[]? _JobList = null)
+    {
+        string temp = "";
+        string[] At = temp.Split(",");
+        try
+        {
+            if (_ListID == "1")
+            {
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, _JobList);
+                At = temp.Split(",");
+                wOpen = bool.Parse(At[0]);
+            }
+            else if (_ListID == "2")
+            {
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, _JobList);
+                At = temp.Split(",");
+                arOpen = bool.Parse(At[0]);
+            }
+            else if (_ListID == "3")
+            {
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, _JobList);
+                At = temp.Split(",");
+                acOpen = bool.Parse(At[0]);
+            }
+        }
+        catch(Exception Ex) 
+        {
+            Console.WriteLine($"Open Close list failed. \nERROR: \n\n{Ex}");
+        }
+    }
+    internal void listSort(bool Archive, int Index = -1)
+    {
+        if (Index != -1) SortIndex = Index;
+        else Index = SortIndex;
+        switch (Index)
+        {
+            case (0):
+                Sort.ByStatus(Archive,true);
+                break;
+            case(1):
+                Sort.ByApp(Archive, true);
+                break;
+            case (2):
+                Sort.ByName(Archive, true);
+                break;
+            case(3):
+                Sort.ByPriority(Archive, true);
+                break;
+            case(4):
+                Sort.ByProgress(Archive, true);
+                break;
+            case(5):
+                Sort.ByTotalFrames(Archive, true);
+                break;
+            case(6):
+                Sort.ByTimeActive(Archive, true);
+                break;
+            case(7):
+                Sort.ByRemaining(Archive, true);
+                break;
+            case(8):
+                Sort.ByOldest(Archive, true);
+                break;
+            case (9):
+                Sort.ByFormat(Archive, true);
+                break;
+            }
+            
+
+    }
+}

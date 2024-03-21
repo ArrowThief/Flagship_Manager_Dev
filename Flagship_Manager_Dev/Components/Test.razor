@@ -1,0 +1,76 @@
+﻿@page "/test"
+@using System.Timers
+@using FlagShip_Manager.Objects
+@using FlagShip_Manager
+@using FlagShip_Manager.Helpers
+@using Flagship_Manager_Dev.Components
+@using Microsoft.JSInterop;
+@inject IJSRuntime JS
+
+<style>
+    .div1{
+        width:300px;
+        height:0px;
+        position:relative; 
+        
+        background:black;
+        overflow:clip;
+        transition-duration: 1s;
+        transition-property: all;
+        transition-timing-function:linear;
+    }
+    .div2{
+        width: 300px;
+        height: 83px;
+        background: blue;
+    }
+
+    .div3 {
+        width: 300px;
+        height: 5px;
+        max-height: 35px;
+        background: black;
+    }
+
+    .button {
+        position:relative;
+        display: block;
+        z-index: 500;
+        width: 300px;
+        height: 5px;
+        max-height: 35px;
+        background: grey;
+    }
+
+</style>
+<button class="button" style="height:35px; " @onclick="() => Open()"> expand</button>
+<div id="1" class='div1' style="position:relative; height:0px;">
+    <div id="2" style="position:relative; bottom:200px; transition-duration: 1s;
+        transition-property: all;
+        transition-timing-function:linear;">
+    @for(int i = 0; i < 5; i++)
+    {
+        <div class="div2"></div>
+        <div class="div3"></div>
+    }
+    </div>
+</div>
+
+@code 
+{
+    bool test = false;
+    bool IsShown = false;
+    IJSObjectReference JSO;
+    internal async Task Open()
+    {
+        JSO = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Test.razor.js");
+        await JSO.InvokeVoidAsync("Open1");
+    }
+    internal async Task Open2()
+    {
+        JSO = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Test.razor.js");
+        await JSO.InvokeVoidAsync("Open2");
+    }
+}
+
+

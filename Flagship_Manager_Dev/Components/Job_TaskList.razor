@@ -1,0 +1,196 @@
+﻿@using FlagShip_Manager.Objects
+@using FlagShip_Manager.Helpers
+<style>
+    .TaskList {
+        width: 1050px;
+        overflow-y: scroll;
+        max-height:182px;
+        clear: both;
+        background: #1E1E1E;
+        -webkit-text-fill-color: #ffffff;
+        border-collapse: collapse;
+    }
+    .taskCell {
+        display:table-cell;
+        height: 29px;
+        text-align: center;
+        border-bottom: 1px solid #595959;
+        border-right: 1px solid #595959;
+    }
+
+    .headerClass {
+        display:table-cell;
+        -webkit-text-fill-color: #E4E4E4;
+        background: #1E1E1E;
+        height: 30px;
+        text-align: center;
+    }
+
+    .taskButtons {
+        background: #595959;
+        -webkit-text-fill-color: #E4E4E4;
+        height: 25px;
+        width: 40px;
+        border: none;
+        border-radius: 15px;
+        font-size: 10px;
+        align-items: center;
+        margin-left: 1px;
+        margin-right: 1px
+    }
+
+    .taskButtons:active {
+        transition-duration: 0.1s;
+        transition-property: all;
+        background: #737370;
+        height: 23px;
+        margin-left: 2px;
+        margin-right: 2px;
+        width: 38px;
+    }
+
+    .hoverGlow:hover {
+        background: #737373;
+    }
+</style>
+
+<div style="display:table-row;">
+    <div class="headerClass" style="width: 40px;">#</div>
+    <div class="headerClass" style="width: 100px;"> Status</div>
+    <div class="headerClass" style="width: 180px;"> Worker</div>
+    <div class="headerClass" style="width: 160px;">Frames</div>
+    <div class="headerClass" style="width: 130px;">Started</div>
+    <div class="headerClass" style="width: 130px;">Finished</div>
+    <div class="headerClass" style="width: 100px;">Attempts</div>
+    <div class="headerClass" style="width: 100px;">Progress</div>
+    <div class="headerClass" style="width: 100px;"></div>
+</div>
+<!--Task List-->
+
+@{
+    var TLID = JID + "TL";
+}
+
+<div id="@TLID" class="TaskList">
+    @if (Count > 0)Count = 1;
+    @foreach (renderTask t in RenderTasks)
+    {
+        <div style="font-size: 14px; height:30px; display:table-row;">
+            @if (t.Attempt(false) < 1)//Task has 0 attempts
+            {
+                <div class="taskCell" style="width: 40px;"><label class="CellLabel">@Count</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@GetStatusMessage(t.Status)</label></div>
+                <div class="taskCell" style="width: 180px;"><label class="CellLabel">---</label></div>
+                <div class="taskCell" style="width: 160px;"><label class="CellLabel">@t.FirstFrame-@t.finalFrame</label></div>
+                <div class="taskCell" style="width: 130px;"><label class="CellLabel">---</label></div>
+                <div class="taskCell" style="width: 130px;"><label class="CellLabel">---</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">0</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">0%</label></div>
+                    
+                <div class="taskCell" style="width: 100px;">
+                    <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() => OpenLogView(t)"><img style="width:18px" src="/Images/Icons/log icon inverted.png" /></button>
+                    <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() =>{ WebButtons.RestartTask(JID, t.ID); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
+                </div>
+            }
+            else//Task has at least one attempt.
+            {
+                <div class="taskCell" style="width: 40px;"><label class="CellLabel">@Count</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@GetStatusMessage(t.Status)</label></div>
+                <div class="taskCell" style="width: 180px;"><label class="CellLabel">@t.taskLogs.CurrentWorker()</label></div>
+                <div class="taskCell" style="width: 160px;"><label class="CellLabel">@t.FirstFrame-@t.finalFrame</label></div>
+
+                <div class="taskCell" style="width: 130px;"><label class="CellLabel">@t.taskLogs.SubmitTime.Last().ToString(@"MM/dd hh:mmtt")</label></div>
+                @if(t.finishTime > DateTime.MinValue)
+                {
+                    <div class="taskCell" style="width: 130px;"><label class="CellLabel">@t.finishTime.ToString(@"MM/dd hh:mmtt")</label></div>
+                }
+                else
+                {
+                    <div class="taskCell" style="width: 130px;"><label class="CellLabel">---</label></div>
+                }
+
+                        
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@(t.Attempt(false))</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@t.progress%</label></div>
+
+                <div class="taskCell" style="width: 100px;">
+                    <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() => OpenLogView(t)"><img style="width:18px" src="/Images/Icons/log icon inverted.png" /></button>
+                    <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() =>{ WebButtons.RestartTask(JID, t.ID); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
+                </div>
+            }
+        </div>
+        Count++;
+    }
+</div>
+  
+
+
+
+@code {
+    [Parameter]
+    public int Count { get; set; } = 1;
+    //[Parameter]
+    //public bool Archive { get; set; } = false;
+    //[Parameter]
+    //public string[] Status { get; set; } = new string[0];
+    //[Parameter]
+    //public string[] Workers { get; set; } = new string[0];
+    //[Parameter]
+    //public int[] FirstFrames { get; set; } = new int[0];
+    //[Parameter]
+    //public int[] FinalFrames { get; set; } = new int[0];
+    //[Parameter]
+    //public DateTime[] StartTimes { get; set; } = new DateTime[0];
+    //[Parameter]
+    //public DateTime[] FinishTimes { get; set; } = new DateTime[0];
+    //[Parameter]
+    //public int[] Attempt { get; set; } = new int[0];
+    //[Parameter]
+    //public int[] Progress { get; set; } = new int[0];
+    [Parameter]
+    public int JID { get; set; } = 0;
+    [Parameter]
+    public renderTask[] RenderTasks { get; set; } = new renderTask[0];
+    [Parameter]
+    public DateTime CreationTime { get; set; }
+    [Parameter]
+    public EventCallback<renderTask> LogViewCall { get; set; }
+    [Parameter]
+    public EventCallback UpdateJob { get; set; }
+
+
+    public string GetStatusMessage(int status)
+    {
+        switch (status)
+        {
+            case (0):
+                return "Queued";
+            case (1):
+                return "Rendering";
+            case (2):
+                return "Done";
+            case (3):
+                return "Paused";
+            case (4):
+                return "Failed";
+            case (5):
+                return "Canceled";
+            default:
+                return "ERROR";
+        }
+    }
+    public string simplifyRenderTime(DateTime? _time, DateTime? JobStartTime)
+    {
+        //return "Broken";
+        if(_time == null || JobStartTime == null)return "---";
+        if (_time == JobStartTime || _time == new DateTime()) return "---";
+        else return _time.ToString();
+    }
+    public async Task OpenLogView(renderTask _rT)
+    {
+        //DivJobUI.RenderLogs = _Log;
+        await LogViewCall.InvokeAsync(_rT);
+        //DivJobUI.LogDisplay = "block";
+        //StateHasChanged();
+    }
+}

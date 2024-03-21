@@ -1,0 +1,124 @@
+﻿@page "/WorkerInfo"
+<h3>WorkerInfo</h3>
+@using FlagShip_Manager
+@using FlagShip_Manager.Objects
+@using System.Timers
+<style>
+    .extraButtons {
+        background: #595959;
+        -webkit-text-fill-color: #E4E4E4;
+        height: 25px;
+        width: 70px;
+        border-radius: 15px;
+        font-size: 10px;
+        align-items: center;
+        margin-left: 1px;
+        margin-right: 1px
+    }
+    th{
+        text-align: center;
+    }
+table, h3{
+    -webkit-text-fill-color: gray;
+}
+</style>
+<div>
+    <table>
+        <tr>
+            <th>Worker Name</th>
+            <th>Status</th>
+            <th>Worker ID</th>
+            <th>LastSeen</th>
+            <th>Kill</th>
+            <th>Main</th>
+            <th>Available Apps</th>
+            <th>GPU</th>
+            <th>Last update</th>
+            
+
+        </tr>
+    
+        @for(int wI = 0; wI < WorkerServer.WorkerList.Count(); wI++)
+        {
+            WorkerObject @w = WorkerServer.WorkerList[wI];
+            RenderApp? Default = w.AvailableApps.Find(a => a.Default == true);
+            <tr>
+                <td style="border: 5px solid; width: 120px; text-align: center;"> @w.name </td>
+                <td style="border: 5px solid; width: 120px; text-align: center;">@StatusDecode(w.Status) </td>
+                <td style="border: 5px solid; width: 180px; text-align: center;">@w.WorkerID</td>
+                <td style="border: 5px solid; width: 180px; text-align: center;"> @w.lastSeen </td>
+                <td style="border: 5px solid; width: 40px; text-align: center;"><input type="button" class="extraButtons" style="width: 40px" value="Kill" @onclick="() => WorkerServer.killWorker(w)"/></td>
+                <td style="border: 5px solid;">
+                    @if (Default != null)
+                    {
+                        <image style="width: 35px;  padding: 2px;" src="@Default.ImagePath"></image>
+                    }
+                </td>
+        
+                <td style="border: 5px solid;">
+                    @foreach(RenderApp app in w.AvailableApps)
+                    {
+                        if(app.Enabled)
+                        {
+                            <image style="width: 35px;  padding: 2px;" src="@app.ImagePath"></image>
+                        }
+                        else
+                        {
+                            <image style="width: 35px; opacity:50;  padding:2px;" src="@app.ImagePath"></image>
+                        }
+                
+                    }
+        
+                </td>
+                <td style="border: 5px solid;">@w.GPU</td>
+                <td style="border: 5px solid;">@w.ConsoleBuffer</td>
+            </tr>
+        }
+    
+    </table>
+</div>
+
+
+@code {
+    private int currentCount = 0;
+    private Timer? time;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            time = new Timer();
+            //Set the time interval.
+            time.Interval = 1000;
+            time.Elapsed += OnTimeInterval;
+            time.AutoReset = true;
+            // Start the timer.
+            time.Enabled = true;
+        }
+        base.OnAfterRender(firstRender);
+    }
+    private async void OnTimeInterval(object sender, ElapsedEventArgs e)
+    {
+        IncrementCount();
+        await InvokeAsync(() => StateHasChanged());
+    }
+    public void Dispose()
+    {
+        // While navigating to other components, Dispose method will be called and clean up the Timer function.
+        time?.Dispose();
+    }
+
+
+    public string StatusDecode(int _s)
+    {
+        if (_s == 0) return "Idle";
+        else if (_s == 1) return "Rendering";
+        else if (_s == 2) return "finished";
+        else return _s.ToString();//return "Crashed";
+
+    }
+}

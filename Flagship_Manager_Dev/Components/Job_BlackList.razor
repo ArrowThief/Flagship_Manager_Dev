@@ -1,0 +1,187 @@
+﻿@using FlagShip_Manager.Objects
+@using FlagShip_Manager.Helpers
+@using FlagShip_Manager
+<style>
+    .BlackList {
+
+        background: #404040;
+        height: contain;
+        min-height: 218px;
+        max-height:218px;
+        width: 184px;
+        overflow-y: scroll;
+    }
+    .WorkerList {
+        width: 178px;
+        overflow-y: scroll;
+        background: #404040;
+        display: table;
+    }
+    
+
+    .checkboxClass {
+        display: none;
+    }
+
+    .label {
+        background: #404040;
+        position: relative;
+        top: 1px;
+        left: 1px;
+        width: 20px;
+        height: 20px;
+        background-size: 18px;
+        mask-image: url("Images/Icons/cropped X.png");
+        mask-size: 18px;
+        -webkit-mask-image: url("Images/Icons/cropped X.png");
+        -webkit-mask-size: 18px;
+        -webkit-mask-repeat: no-repeat;
+        -ms-transform-origin-x: 9px;
+        -ms-transform-origin-y: 9px;
+        -webkit-transform-origin-x: 9px;
+        -webkit-transform-origin-y: 9px;
+        transition-duration: 0.4s;
+        transition-property: all;
+    }
+
+    .checkboxClass:checked + .label {
+        background: #E4E4E4;
+        transform: rotate(45deg);
+        -webkit-transform: rotate(45dg);
+    }
+
+    .CircleClass {
+        background: #1E1E1E;
+        width: 26px;
+        height: 26px;
+        position: relative;
+        top:2px;
+        left:2px;
+        padding: 3px;
+        border-radius: 15px;
+        stroke-width: 2px;
+        stroke: green;
+        
+        
+    }
+    .WorkerLabel{
+        font-size:14px;
+        position:relative;
+        bottom:3px;
+        padding-left:10px;
+    }
+
+</style>
+@{
+    var BLID = JID + "BL";
+}
+
+<div id="@BLID" class="BlackList">
+    <div class="WorkerList">
+        @foreach (WorkerObject w in WorkerServer.WorkerList)
+        {
+            @*
+            if(!idBlackList.Contains(w.WorkerID)){
+                if (w.AvailableApps.Find(a => a.AppName == renderApp) == null || w.Status == 7 || (!w.GPU && GPUrequired)) continue;
+            }*@
+                
+            <div style="display:table-row; height:31px;">
+                <div style="display:table-cell; width: 31px;">
+                    <div class="CircleClass">
+                        @if (Status == 0 || Status == 1 || Status == 3)
+                        {
+                            <label>
+                                @if (idBlackList.Contains(w.WorkerID))
+                                {
+                                    <input class="checkboxClass" type="checkbox" id="@w.WorkerID" checked @onclick="() => AddorRemoveFromBlackList(w.WorkerID, JID)">
+                                }else{
+                                    <input class="checkboxClass" type="checkbox" id="@w.WorkerID" @onclick="() => AddorRemoveFromBlackList(w.WorkerID, JID)">
+                                }
+                                <div class="label"></div>
+                            </label>
+                        }else{
+                            <label><div class="label" style="opacity:0;"></div></label>
+                        }
+                    </div>
+                </div>
+                <div style="display:table-cell; height:30px; vertical-align:central;">
+                    @if (idBlackList.Contains(w.WorkerID))
+                    {
+                        <label class="WorkerLabel" style="">@GetReducedName(w.name)</label>
+                    }
+                    else
+                    {
+                        <label class="WorkerLabel" style="-webkit-text-fill-color:white;">@GetReducedName(w.name)</label>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+
+@code {
+    [Parameter]
+    public bool GPUrequired { get; set; }
+    [Parameter]
+    public int Status { get; set; }
+    [Parameter]
+    public int JID { get; set; }
+    [Parameter]
+    public List<int>? idBlackList { get; set; }
+    [Parameter]
+    public bool ShowButton { get; set; }
+    [Parameter]
+    public string? renderApp { get; set; } = "";
+    [Parameter]
+    public EventCallback UpdateJob { get; set; }
+
+    //private bool firstRender = true;
+    public void AddorRemoveFromBlackList(int _WID, int _JID)
+    {
+
+        Job? j = jobManager.jobList.Find(job => job.ID == _JID);
+        if (j.Status == 2 || j.Status == 4 || j.Status == 5) return;
+        if (j.WorkerBlackList.Contains(_WID))
+        {
+            j.WorkerBlackList.Remove(_WID);
+            return;
+        }
+        foreach (renderTask t in j.renderTasks)
+        {
+            //int LogIndex = t.Log.Count() - 1;
+            WorkerObject worker = WorkerServer.WorkerList.Find(FW => FW.WorkerID == _WID);
+
+            if (t.taskLogs.WorkerIDs.Any(id => id == worker.WorkerID) && t.Status != 2)
+            {
+                try
+                {
+                    WorkerServer.cancelWorker(worker, false, true);
+                    t.taskLogs.WriteToWorker($"\n-------------------------------Worker Log end-------------------------------\n{worker.name} Has been sent a cancel request.");
+                    t.taskLogs.WriteToManager($"{worker.name} Has been sent a cancel request. Task will restart with a new worker.");
+                    //Logic.taskFail(j.ID, t.ID, worker.WorkerID, "Worker added to black list.", true, true);
+                    t.taskFail("Worker added to black list.", true, true);
+                    return;
+                }
+                catch
+                {
+
+                }
+            }
+        }
+        if (!j.WorkerBlackList.Contains(_WID)) j.WorkerBlackList.Add(_WID);
+        UpdateJob.InvokeAsync();
+    }
+
+    public static string GetReducedName(string _name)
+    {
+        if (_name.Length > 12)
+        {
+            string endBit = _name.Substring(_name.Length - 4, 4);
+            string split = _name.Substring(0, 6) +"..."+ endBit;
+            return split;
+        }
+        else return _name;
+    }
+}

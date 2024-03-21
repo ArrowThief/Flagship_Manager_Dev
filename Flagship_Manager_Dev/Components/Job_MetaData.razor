@@ -1,0 +1,150 @@
+﻿@using System.Windows;
+@using Microsoft.JSInterop
+@inject IJSRuntime RunJS
+
+
+<style>
+    .MetaBox{
+    }
+    .MetaLabel{
+        -webkit-text-fill-color: #E4E4E4;
+        background: #1E1E1E;
+        height: 28px;
+        text-align: left;
+        margin:-1px;
+    }
+    .HoverGlow{
+        -webkit-text-fill-color: cornflowerblue;
+    }
+    .HoverGlow:hover{
+        -webkit-text-fill-color: blue;
+        cursor:pointer;
+    }
+    .FullName{
+        display:none;
+        background:green;
+        position:absolute;
+        top:40%;
+        
+    }
+   
+</style>
+
+<div style="z-index:100; width:292px; height:218px; padding-left:5px;">
+
+        @if (GPU)
+        {
+        <label class="MetaLabel">Render Device: <label style="font-weight:bold;-webkit-text-fill-color:#76B900">GPU</label></label>
+        }
+        else
+        {
+        <label class="MetaLabel">Render Device: <label style="font-weight:bold; -webkit-text-fill-color:#00C7FD;">CPU</label></label>
+        }
+        <div></div>
+        
+        @if (Overwrite)
+        {
+        <label class="MetaLabel">Overwrite: <lablel style="font-weight:bold;-webkit-text-fill-color:#76B900">ENABLED</lablel></label>
+        }
+        else
+        {
+        <label class="MetaLabel">Overwrite: <lablel style="font-weight:bold;-webkit-text-fill-color:#ED1C24;">DISABLED</lablel></label>
+        }
+   
+        <div></div>
+        <label class="MetaLabel">Render Preset: <label class="HoverGlow" @onclick="() => CopyToClipboard(CleanOutput(Preset))">@GetShortenedString(Preset, 24)</label></label>
+
+        <div></div>
+        <label class="MetaLabel">Project: 
+            @if (ProjectPath != null)
+            {
+                <label class="HoverGlow" @onclick="() => CopyToClipboard(ProjectPath)">@GetShortenedString(ProjectPath, 27)</label>
+                //navigator.clipboard.writeText('@CleanOutput(ProjectPath)')
+            }
+            else
+            {
+                <label class="HoverGlow">@GetShortenedString(ProjectPath, 27)</label>
+            }
+        </label>
+
+        <label class="MetaLabel">Temp Path: <label class="HoverGlow" @onclick="() => CopyToClipboard(TempProjectPath)">@GetShortenedString(TempProjectPath, 22)</label></label>    
+
+        <label class="MetaLabel">Output: <label class="HoverGlow" @onclick="() => CopyToClipboard(Directory.GetParent(OutputPath).ToString())">@GetShortenedString(OutputPath, 24)</label></label>
+
+        <label class="MetaLabel">Active Machine time: @MachineHours.ToString(@"d\:hh\:mm\:ss")</label>
+
+        <label class="MetaLabel">@GetTimePerFrame(AverageFPS)</label>
+</div>
+
+@code {
+    //AverageFrameTime.ToString(@"h\:mm\:ss")
+    [Parameter]
+    public int JobID { get; set; }
+    [Parameter]
+    public bool GPU { get; set; }
+    [Parameter]
+    public bool Overwrite { get; set; }
+    [Parameter]
+    public string ProjectPath { get; set; } = "";
+    [Parameter]
+    public string TempProjectPath { get; set; } = "";
+    [Parameter]
+    public string OutputPath { get; set; } = "";
+    [Parameter]
+    public string Preset { get; set; } = "";
+    [Parameter]
+    public TimeSpan MachineHours { get; set; } = TimeSpan.Zero;
+    [Parameter]
+    public Double AverageFPS { get; set; }
+
+    //private static int test; 
+    private IJSObjectReference JS;
+
+    private static string GetShortenedString(string _Path, int Lenght)
+    {
+        if (_Path == null)
+        {
+            return "Missing Data";
+        }
+        else if (_Path.Length > Lenght)
+        {
+            return _Path.Substring(0, Lenght) + "...";
+        }
+        else return _Path;
+    }
+    private static string CleanOutput(string _Input, bool Parent = false){
+        string Output;
+        if(Parent)
+        {
+            Output = Directory.GetParent(_Input).ToString().Replace("\\", "\\\\");
+        }
+        else 
+        {
+            Output = _Input.Replace("\\", "\\\\");
+        }
+        return Output;
+    }
+    private async Task CopyToClipboard(string text)
+    {
+        JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Components/Job_MetaData.razor.js");
+        try
+        {
+            Console.WriteLine(text);
+            await JS.InvokeVoidAsync("copyToClipboard", text);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+        }
+
+    }
+    private static string GetTimePerFrame(Double _TPM)
+    {
+        if (_TPM > 1000000) return "Calculating...";
+        else if (_TPM > 3600) return $"Hours Per Frame: {Math.Round(_TPM / 3600, 2)}";
+        else if (_TPM > 60) return $"Minutes Per Frame: {Math.Round(_TPM / 60, 2)}";
+        else return $"Seconds Per Frame: {Math.Round(_TPM, 2)}";
+
+    }
+}
+

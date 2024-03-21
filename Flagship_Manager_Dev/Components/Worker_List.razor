@@ -1,0 +1,276 @@
+﻿@using FlagShip_Manager;
+@using FlagShip_Manager.Objects;
+@using System.Text.RegularExpressions;
+@using System.Timers
+@inject IJSRuntime RunJS
+
+<style>
+    .WorkerButtons {
+        background: #595959;
+        -webkit-text-fill-color: #E4E4E4;
+        height: 25px;
+        width: 60px;
+        border-radius: 15px;
+        font-size: 10px;
+        align-items: center;
+        margin-top:4px;
+        margin-left: 1px;
+        margin-right: 1px;
+        position: relative;
+        border:none;
+        
+    }    
+    .WorkerButtons:hover {
+        background: #737373;
+    }
+    .WorkerButtons:active{
+        transition-duration: 0.1s;
+        transition-property: all;
+        background: #737370;
+        height:23px;
+        margin-left: 3px;
+        margin-right: 3px;
+        width:56px;
+    }
+    .WI_cell {
+        position: relative;
+        text-align: center;
+        float: left;
+        -webkit-text-fill-color: #E4E4E4;
+        height: 35px;
+        border-right:solid;
+        border-bottom:solid;
+        z-index: 20;
+        transition-duration: 0.4s;
+        transition-property: all;
+    }
+    .AppIconStatic{
+        position:relative;
+        top:1px;
+        width: 30px; 
+        
+    }
+
+    .GPUIconStatic {
+        position: relative;
+        top: 1px;
+        width: 24px;
+    }
+    .LabelDrop{
+        position:relative;
+        margin-left:10px;
+        margin-right:10px;
+        white-space: nowrap;
+        margin-top:3px;
+        margin-bottom:3px;
+        z-index: 25;
+    }
+
+    .AppIconAnimate{
+        background-origin:content-box;
+        position: static;
+        padding-top:3px;
+        width: 26px;
+        transition-duration: 0.2s;
+        transition-property: all;
+    }
+    .AppIconAnimate:hover{
+        transition-duration: 0.4s;
+        transition-property: all;
+        position:static;
+        cursor: pointer;
+        animation:ease-in;
+        padding-top: 0px;
+        width:32px;
+    }
+    .AppIconAnimate:active{
+        transition-duration: 0.1s;
+        transition-property: all;
+        padding-top: 3px;
+        width:26px;
+    }
+    .ExpandingName{
+        background-color: #424242;
+        overflow: clip;
+        position: absolute;
+        width: 140px;
+        z-index: 500;
+        transition-duration: 0.4s;
+        transition-property: all;
+    }
+
+</style>
+<div id="jl1">
+@foreach(WorkerObject W in WorkerServer.WorkerList){
+    var labelID = W.WorkerID + "l";
+    var IDdouble = W.WorkerID + "b";
+    var statusID = W.WorkerID + "s";
+    RenderApp? Default = W.AvailableApps.Find(a => a.Default == true);
+    
+        <div style="background: #424242; width: 100%; height:32px; clear: both; z-index:0">
+            <div id="@IDdouble" class="WI_cell" style=" width:150px; z-index:10;">
+                <div id="@W.WorkerID" class="ExpandingName" @onmouseover='() => JSFunctiion(W.WorkerID, "ShowExtendedName")'  @onmouseout='() => JSFunctiion(W.WorkerID, "HideExtendedName")'>
+                    <label id='@labelID' class="LabelDrop" style="z-index:510">@W.name</label><!--Worker Name-->
+                </div> 
+            </div>
+            <div id="@statusID" class="WI_cell" style="width:100px; z-index:1;"><label class="LabelDrop" style="z-index:1;">@StatusDecode(W.Status)</label></div><!--Status-->
+            <div class="WI_cell" style="width:45px">
+                @if (Default != null)
+                {
+                    <img class="AppIconStatic" src="@Default.ImagePath" />
+                }
+            </div><!--Master render type-->
+            <div class="WI_cell" style="width:105px">
+                <div style="position:relative; "></div>
+                <!--Apps this worker is able to render with.-->      
+                <div style="width:5px;"></div>
+            
+                @foreach (RenderApp app in W.AvailableApps)
+                {
+                    <div style="position:relative; float:left; width:33px; height:32px;">
+                        @if (W.Status == 7)
+                        {
+                            <img class="AppIconStatic" style="opacity:50%;" src="@app.ImagePath" />
+                        }
+                        else{
+                            <img class="AppIconAnimate" @onclick="() => app.EnableDisable()" src="@app.ImagePath" />
+                        }
+                    </div>
+                }
+            
+                                                                     
+            </div>
+            <div class="WI_cell" style="width:50px"><img class="GPUIconStatic" style="opacity:45%" src="@GetGPUStatusIcon(W.GPU)"/></div><!--GPU Info-->
+            <div class="WI_cell" style="width:140px">
+                @if (W.Status != 7){
+                    <button class="WorkerButtons" @onclick="() => W.KillWorker()">Kill</button>
+                    @if(W.Status != 3 )
+                    {          
+                        <button class="WorkerButtons" @onclick="() => W.SleepWorker()">Sleep</button>
+                    }
+                    else
+                    {
+                        <button class="WorkerButtons" @onclick="() => W.SleepWorker()">Wake</button>
+                    }   
+                }
+            </div><!--Control buttons-->
+        
+            <div class="WI_cell" style="width:120px"><label class="LabelDrop">@SimplifedTime(W.lastSeen)</label></div> <!--Time since worker last updated-->
+
+            <div class="WI_cell" style="width:834px; text-align:left; padding-left:2px;border-right:hidden;"><label class="LabelDrop">@W.ConsoleBuffer</label></div><!--Latest Log data-->
+
+        </div>
+        <!--<div style="width:1520px; height:4px;"></div>-->
+    }
+    <div style="width:1520px; height:4px;"></div>
+</div>
+    
+    
+
+
+
+@code {
+    private IJSObjectReference JS;
+
+    private Timer? time;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            time = new Timer();
+            //Set the time interval.
+            time.Interval = 200;
+            time.Elapsed += OnTimeInterval;
+            time.AutoReset = true;
+            // Start the timer.
+            time.Enabled = true;
+        }
+        //base.OnAfterRender(firstRender);
+    }
+    private async void OnTimeInterval(object sender, ElapsedEventArgs e)
+    {
+        await InvokeAsync(() => StateHasChanged());
+    }
+    public string StatusDecode(int _s)
+    {
+        //Client status. ready for work(0), rendering(1), complete(2), Paused/asleep(3), failed(4), canceled(5) starting up(6), offline(7), passive(8) asleep(9).
+        switch(_s){
+            case 0:
+                return "Idle";
+            case 1:
+                return "Rendering";
+            case 2:
+                return "Finished";
+            case 3:
+                return "Asleep";
+            case 4:
+                return "Failed";
+            case 5:
+                return "Canceled";
+            case 6:
+                return "Starting up";
+            case 7:
+                return "Offline";
+            case 8:
+                return "Passive";
+            default: 
+                return "ERROR";
+        }
+
+    }
+    public string GetRenderAppfromNum(int Num){
+        switch (Num)
+        {
+            case 1:
+                return "AE";
+            case 2:
+                return "blender";
+            case 3:
+                return "fusion";
+            default:
+                return "ERROR";
+        }
+    }
+    public string GetGPUStatusIcon(bool _GPU){
+        if(_GPU){
+            return @"Images\Status\Finished_whitey.png";
+        }else{
+            return @"Images\Status\Failed_whitey.png";
+        }
+
+    }
+    public string SimplifedTime(DateTime _lastSeen)
+    {
+        if (_lastSeen.AddDays(1) < DateTime.Now)
+        {
+            return _lastSeen.ToString(@"MM/dd");
+        }
+        else if (_lastSeen.AddMinutes(1) < DateTime.Now)
+        {
+            return _lastSeen.ToString("hh:mm tt");
+        }
+
+        else
+        {
+            TimeSpan temp = DateTime.Now - _lastSeen;
+            var tempRound = Math.Ceiling(temp.TotalSeconds);
+            if (tempRound > 9) return $"{tempRound} seconds";
+            else if (tempRound > 1) return $"{tempRound} seconds";
+            else return "Now";
+        }
+    }
+    internal string AdjustNameLength(string _Name)
+    {
+        if (_Name.Length > 10)
+        {
+            return _Name.Substring(0, 10);
+        }
+        else return _Name;
+    }
+    internal async Task JSFunctiion(int _grid_ID, string _function)
+    {
+        JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Components/Worker_List.razor.js");
+        await JS.InvokeVoidAsync(_function, _grid_ID);
+    }
+}
