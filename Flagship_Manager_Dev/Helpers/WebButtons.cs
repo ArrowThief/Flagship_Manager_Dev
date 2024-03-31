@@ -222,21 +222,6 @@ namespace FlagShip_Manager.Helpers
             //Console.WriteLine("TEST");
         }
         
-        public static void CloseAll(List<JobGUI> _list)
-        {
-
-            foreach (JobGUI jgui in _list)
-            {
-                if (jgui.Open)
-                {
-                    jgui.JobArrow = "Images/arrow right.png"; ;
-                    jgui.Open = false;
-                    jgui.TaskArrow = "Images/arrow down.png";
-                    jgui.TaskListClass = "TaskList";
-                    jgui.BlackListClass = "ScrollList";
-                }
-            }
-        }
        
         public static void RunAction(int Command, int[] Selected)//1 Cancel, 2:Pause, 3:Restart, 4:Return to Queue and restart, 5:Archive, 6:Resume, 7:Remove 8:Return to Queue
         {

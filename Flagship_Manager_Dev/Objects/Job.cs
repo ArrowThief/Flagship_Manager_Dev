@@ -10,6 +10,9 @@ namespace FlagShip_Manager.Objects
 {
     public class Job
     {
+        //A container for all of a Jobs required data, includes a list of renderTasks to be sent to workers. 
+        //TODO: Split UI info out of job for faster UI interface. 
+
         //Render info
         public string Project { get; set; } = "null";
         public string WorkingProject { get; set; } = "Data Not found";
@@ -61,17 +64,23 @@ namespace FlagShip_Manager.Objects
         public bool selected { get; set; } = false;
         public double SmallestFile { get; set; } = -1;
 
-        public void newProgress()
+        public void getProgress()
         {
+            //Updates Job progress info. 
+
             float localProgress = 0;
             int localFinishedFrames = 0;
             foreach (renderTask task in renderTasks)
             {
                 if (RenderApp.ToLower() == "ae")
                 {
+                    //AfterEffects Render.
+
                     if (task.Status == 1)
                     {
-                        task.GetProgressFromAELog(frameRate);//Gets progress from AE Log. 
+                        //Task is being rendered currently
+
+                        task.GetProgressFromAELog(frameRate);
                         if (task.CheckWorkerActivity())
                         {
                             task.FinishReported = true;
@@ -80,24 +89,32 @@ namespace FlagShip_Manager.Objects
                     if (task.FinishReported)
                     {
                         task.FinishReported = false;
-                        if (CheckFiles(task, false, true))//Checks all the files after a task is returned to Manager, will overwrite progress data from AE Log.
+                        if (CheckFiles(task, false, true))
                         {
+                            //Checks all the files after a task is returned to Manager, will overwrite progress data from AE Log.
+
                             task.Finish();
                             UpdateUI = true;
                         }
-                        else//Some or all frames were missing dispite Log data.
+                        else
                         {
+                            //Some or all frames were missing dispite Log data.
+
                             task.taskFail("The worker returned task to Manager without completing it.");
                         }
                     }
 
                 }
-                else//blender render
+                else
                 {
+                    //Blender render.
+
                     if (task.Status == 1)
                     {
-                        if (CheckFiles(task))//Gets progress frome file existance, age and readabiliity.
+                        if (CheckFiles(task))
                         {
+                            //Gets progress frome file existance, age and readabiliity.
+
                             task.Finish();
                             UpdateUI = true;
                         }
@@ -111,26 +128,44 @@ namespace FlagShip_Manager.Objects
                         }
                     }
                 }
-                localProgress += task.FinishedFrameNumbers.Count() * ProgressPerFrame;//Adds progress from each tasks finished frames to local variable. 
+                //Adds progress from each tasks finished frames to local variable.
+                localProgress += task.FinishedFrameNumbers.Count() * ProgressPerFrame;
+
                 localFinishedFrames += task.FinishedFrameNumbers.Count();
             }
 
-            if (localProgress > Progress)//If all tasks progress is grater than previous Progress report then Progress is updated. 
+            if (localProgress > Progress)
             {
+                //If all tasks progress is grater than previous Progress report then Progress is updated. 
+
                 Progress = (float)Math.Round(localProgress);
                 CompletedFrames = localFinishedFrames;
             }
 
-            if (Progress >= 100 || renderTasks.All(t => t.Status == 2))//Job finished
+            if (Progress >= 100 || renderTasks.All(t => t.Status == 2))
             {
+                //Job finished
+
                 JobsDone();
                 return;
             }
 
-            if (PauseRequest) Status = 3;//Pause
-            else if (renderTasks.Any(t => t.Status == 1)) Status = 1;//Tasks are rendering
-            else if (Status != 2 && Status != 3 && Status != 5)//No Tasks are rendering
+            if (PauseRequest)
             {
+                //Pause
+
+                Status = 3;
+            }
+            else if (renderTasks.Any(t => t.Status == 1))
+            {
+                //Tasks are rendering
+
+                Status = 1;
+            }
+            else if (Status != 2 && Status != 3 && Status != 5)
+            {
+                //No Tasks are rendering
+
                 if (StartTimes.Count() > EndTimes.Count() && DateTime.Now - StartTimes.Last() > TimeSpan.FromSeconds(5))
                 {
                     EndTimes.Add(DateTime.Now);
@@ -139,17 +174,18 @@ namespace FlagShip_Manager.Objects
                 if (Status != 4) Status = 0;
                 Thread.Sleep(500);
             }
-            else if (renderTasks.All(t => t.Status == 2)) Status = 2; //All tasks have finished.
         }
         public void JobsDone()
         {
+            //Marks Job and all renderTasks to finished.
+            //Catches weird issues that happen sometimes.
+
             foreach (renderTask rt in renderTasks)
             {
                 if (rt.Status != 2 || rt.progress < 100 || rt.finishTime == DateTime.MinValue)
                 {
                     rt.Status = 2;
                     rt.progress = 100;
-                    //rt.finished = true;
                     rt.finishTime = DateTime.Now;
                 }
             }
@@ -160,14 +196,16 @@ namespace FlagShip_Manager.Objects
             RemainingTime = TimeSpan.Zero;
             CompletedFrames = TotalFramesToRender;
         }
-        public void TimeEstimate()//This will calculate the estimated remaining time.
+        public void TimeEstimate()
         {
+            //Calculates the reamaining time.
+
             double remainingProgress = 100 - Progress;
             TimeSpan TotalTime = TimeSpan.Zero;
             TimeSpan localMHours = TimeSpan.Zero;
             int count = 0;
             DateTime Earliest = DateTime.Now;
-            DateTime EndTime = DateTime.MinValue;//j.renderTasks[0].lastUpdate;
+            DateTime EndTime = DateTime.MinValue;
 
             foreach (renderTask rt in renderTasks)
             {
@@ -197,7 +235,6 @@ namespace FlagShip_Manager.Objects
                 count++;
             }
 
-            //timeDifferance = Latest - Earliest;
             double ppsBuffer = TotalTime.TotalSeconds / Progress;
             TimePerFrame = Math.Round(TotalTime.TotalSeconds / CompletedFrames, 3);
             if (double.IsNaN(ppsBuffer) || double.IsInfinity(ppsBuffer) || ppsBuffer < .25) return;
@@ -212,8 +249,10 @@ namespace FlagShip_Manager.Objects
             }
             double averagePPS = Enumerable.Sum(ProgressPerSecond) / 30;
             totalActiveTime = TotalTime;
-            try//This will probably need to be fixed, but it keeps thing from crashing.
+            try
             {
+                //TODO: Check if this causes any problems.
+
                 RemainingTime = TimeSpan.FromSeconds(Math.Round(remainingProgress * averagePPS));
             }
             catch
@@ -223,7 +262,8 @@ namespace FlagShip_Manager.Objects
         }
         public void SetOutputOffset()
         {
-            //string Root = Path.GetPathRoot(outputDir);
+            //Gets the time offset on the destination server.
+
             Random rng = new Random();
 
             string TimeOffsetPath = $"{outputDir}\\TimeTest_{rng.Next()}.txt";
@@ -246,6 +286,8 @@ namespace FlagShip_Manager.Objects
         }
         public bool CheckFiles(renderTask _rT, bool DBLoad = false, bool checkAllFrames = false)
         {
+            //Checks completion using file data. Also updates progress. Returns true if all files are found and openable. 
+            //
 
             if (checkAllFrames) _rT.FinishedFrameNumbers.Clear();
             Regex numPattern = new Regex(@"(\[#+\])");
@@ -259,14 +301,7 @@ namespace FlagShip_Manager.Objects
             string extention = Path.GetExtension(outputPath).ToLower();
             string fileName = Path.GetFileNameWithoutExtension(outputPath).ToLower();
             string filePath = $@"{outputDir}\";
-
             string Padding = "";
-            //int currentFrame = 0;
-            //int AdjTaskframes = _rT.adjustedFrameRange;//FindAdjustedRange((_rT.finalFrame - _rT.FirstFrame), _j.FrameStep);
-            //float taskPercnt = _rT.adjustedFrameRange / 100; //Convert.ToDouble((_rT.finalFrame - _rT.FirstFrame) + 1); ; 
-            //float JobPercet = FindAdjustedRange(TotalFramesToRender, FrameStep) / 100;
-
-            //TimeSpan timeOffset = TimeSpan.Zero;
 
 
             if (vid)
@@ -294,7 +329,6 @@ namespace FlagShip_Manager.Objects
                 NumReplacePatern = new Regex(@"(\[#+\])");
                 paddingCount = Regex.Match(fileName, @"#+(?=])").Length;
                 match = NumReplacePatern.Matches(fileName).First().Value;
-                //replaceString = PoundString
             }
             else if (RenderApp.ToLower() == "fusion")
             {
@@ -310,26 +344,21 @@ namespace FlagShip_Manager.Objects
             }
             else return false;
             if (match == "") appendtoEnd = true;
-            //currentFrame = _rT.FirstFrame;
             if (_rT.RenderFrameNumbers.Count() == 0) _rT.GenerateFrameCount(Step);
             List<int> UnfinishedFrames = new List<int>();
-            foreach (int frame in _rT.RenderFrameNumbers)//Creates a list of unfinished fraems;
+            foreach (int frame in _rT.RenderFrameNumbers)
             {
+                //Creates a list of unfinished fraems;
+
                 if (!_rT.FinishedFrameNumbers.Any(f => f == frame))
                 {
                     UnfinishedFrames.Add(frame);
                 }
             }
-            //int completedFrames = _rT.FinishedFrameNumbers.Count();
             bool done = true;
             foreach (var frameNum in UnfinishedFrames)
             {
-                //Stopwatch sw = Stopwatch.StartNew();
                 string filePathwithNum = "";
-
-
-                //int TempFrame = _rT.RenderFrameNumbers[i];//_rT.FirstFrame + (Step * i);
-
                 Padding = "";
                 if (appendtoEnd)
                 {
@@ -361,487 +390,94 @@ namespace FlagShip_Manager.Objects
                     }
                     if ((Overwrite && _rT.taskLogs.SubmitTime[0] < AdjustedAge) || !Overwrite)
                     {
+                        //File Found and passed age check
+
                         if (size >= SmallestFile && SmallestFile > 0)
                         {
                             //File is assumed good by comparing the smallest known good file to this file's size.  
-                            //completedFrames++;
+
                             _rT.FinishedFrameNumbers.Add(frameNum);
                             _rT.taskLogs.WriteToManager($"{frameNum} Found, assumed good by size. \n");
-                            //Console.WriteLine($"{frameNum} check time: {sw.ElapsedMilliseconds}");
                         }
                         else if (FileCheck.CheckFileReadability(filePathwithNum))
                         {
-                            //File failed file size check, checking intergrity explicetly. This is FAR more disk intensive and would slow everything down consiterably if done to each file individually.
-                            //Every task has a smallest file which is used for file check, if a file is smaller than the samllest its checked explicitly, if found good its size is used as the new smallest. 
+                            //File failed size check, fallback to explicet test and passed.
+                            //This is FAR more disk intensive and would slow everything down consiterably if done to each file individually.
 
                             _rT.taskLogs.WriteToManager($"{frameNum} Found, checked explicitly\n");
 
                             if (size > 1024)
                             {
+                                //Update smallest file size.
+
                                 SmallestFile = Convert.ToDouble(size);
                                 _rT.taskLogs.WriteToManager($"Smallest file size set to: {Math.Round(size / 1024)}KB\n");
                             }
 
-
-                            //}
-
-                            //completedFrames++;
-                            //_rT.adjustedFirstFrame = frameNum;
                             _rT.FinishedFrameNumbers.Add(frameNum);
-                            //Console.WriteLine($"{frameNum} check time: {sw.ElapsedMilliseconds}");
-                            //_rT.mangagerLog[_rT.attempt] += $"{frameNum} Found, checked explicitly\n";
-
                         }
                         else
                         {
+                            //File exists but is assumed corrupt. 
+
                             _rT.taskLogs.WriteToManager($"{frameNum} Found, but failed integreity check.\n");
                             done = false;
                         }
                     }
                     else
                     {
+                        //File with correct name was found, but it failed age check.
+
                         done = false;
                         _rT.taskLogs.WriteToManager($"{frameNum} Old file was found, ignoring.\n");
                     }
                 }
                 else
                 {
+                    //File not found
+
                     done = false;
                     _rT.taskLogs.WriteToManager($"{frameNum} Not found.\n");
                 }
-                //else File dosen't exist.
             }
-            //Console.WriteLine("-------------------------------------------------------------------------");
             _rT.FinishedFrameNumbers.Sort();
             _rT.adjustedFirstFrame = 0;
 
             _rT.FindAdjustedFirstFrame();
             _rT.progress = (float)Math.Ceiling(_rT.FinishedFrameNumbers.Count() * _rT.ProgressPerFrame);
-            //_rT.FinishedFrameCount = completedFrames;
 
-            if (done) return true;
-            else return false;
+            if (done)
+            {
+                //Jobs done.
+                return true;
+            }
+            else
+            {
+                //More work? 
+                return false;
+            }
         }
 
         internal void BuiildOutputDir()
         {
-            if(!Directory.Exists(outputDir)) 
+            //Checks if output dir exits. If false, attempts to build dir recursively.
+            //TODO: move this Method into the one that references it. 
+
+            if (!Directory.Exists(outputDir))
             {
                 Console.WriteLine("Output folder doesn't exists. Building...");
                 try
                 {
                     Logic.BuildFolderPath(outputDir);
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Console.WriteLine("Attempting to build folder path for new Job.\nERROR: \n" + e);
                 }
-                
+
             }
             else Console.WriteLine("Output folder exists.");
 
-
-
         }
-        /*
-public static int FindAdjustedRange(int Frames, int FrameStep)
-{
-
-   int Adjusted = 0;
-   int Count = 0;
-
-   while (Adjusted <= Frames)
-   {
-       //if (FrameStep == 0) return Frames;
-       Count++;
-       Adjusted += FrameStep;
-   }
-   return Count;
-
-}
-
-*         public void GetJobProgress()
-{
-
-   int LogIndex = 0;
-   if (ProgressPerFrame == 0)
-   {
-       ProgressPerFrame = 100 / (float)TotalFramesToRender;
-   }
-
-   float BeginProgress = Progress;
-   int localFinishedFrameCount = 0;
-   //double jobPercent = 100 / Convert.ToDouble(TotalFramesToRender);
-   float localPercent = 0;
-   //DateTime fileAge = DateTime.Now;
-
-   if (!Directory.Exists(outputDir)) return;
-   if (vid)
-   {
-       GetAEVidJobProgress();
-   }
-   else
-   {
-       foreach (renderTask t in renderTasks)
-       {
-           LogIndex = t.Attempt();
-           //if (t.Status == 0) continue;
-           //Check files if a finish has been reported.
-
-           //jobManager.CheckFiles(this, t);
-           if (LogIndex < 0) return;
-           if (t.Status == 0 || t.Status == 1 || (t.Status == 2 && t.progress < 100)) //Check Task for crash after task has been submitted for rendering.
-           {
-               //t.CheckTaskFinish(this);
-
-               //if(t.Status == 1 && RenderApp =="ae") t.AELogtoProgress();
-
-               if (CheckFiles(t))//Checks to make sure the files actually exist.
-               {
-                   t.progress = 100;
-                   t.FinishedFrameCount = t.adjustedFrameRange;
-                   t.FinishedFrameNumbers = t.RenderFrameNumbers.ToList();
-                   t.Status = 2;
-                   //t.finished = true;
-                   t.finishTime = DateTime.Now;
-                   UpdateUI = true;
-               }
-               else if (t.Status == 1 || (t.Status == 2 && t.progress < 100))
-               {
-                   t.CheckForFail(MaxRenderTime, ID);
-               }
-
-           }
-
-           localFinishedFrameCount += t.FinishedFrameNumbers.Count();
-           localPercent = (ProgressPerFrame * localFinishedFrameCount);
-           if (Progress <= localPercent)//UpdateJob Progress
-           {
-               CompletedFrames = localFinishedFrameCount;
-               localPercent = (float)Math.Round(localPercent);
-               Progress = localPercent;
-           }
-
-       }
-   }
-   if (Progress >= 100 || renderTasks.All(t => t.Status == 2))//Job finished
-   {
-       JobsDone();
-   }
-   if (PauseRequest) Status = 3;//Pause
-   else if (renderTasks.Any(t => t.Status == 1)) Status = 1;//Tasks are rendering
-   else if (Status != 2 && Status != 3 && Status != 5)//No Tasks are rendering
-   {
-       if (StartTimes.Count() > EndTimes.Count() && DateTime.Now - StartTimes.Last() > TimeSpan.FromSeconds(5))
-       {
-           EndTimes.Add(DateTime.Now);
-       }
-
-       if (Status != 4) Status = 0;
-       Thread.Sleep(500);
-   }
-   else if (renderTasks.All(t => t.Status == 2)) Status = 2; //All tasks have finished.
-
-}
-public void GetAEVidJobProgress()
-{
-   DateTime fileAge = DateTime.Now;
-   Double BeginProgress = Progress;
-   //TimeSpan timeOffset = TimeSpan.Zero;
-   renderTask t = renderTasks[0];
-   try
-   {
-       //timeOffset = jobManager.DriveTimeOffset[jobManager.Drives.FindIndex(d => d == Path.GetPathRoot(outputDir))];
-       fileAge = File.GetLastWriteTime(outputPath) - OutputDeviceOffset;
-   }
-   catch
-   {
-       Console.WriteLine("Missing time offset.");
-   }
-
-
-   if (!Directory.Exists(outputDir)) return;
-   //if (t.Status == 0) return;
-
-   //Check files if a finish has been reported.
-   if (t.Status == 1) //Check Task for crash after task has been submitted for rendering.
-   {
-       Status = 1;
-       t.CheckForFail(MaxRenderTime, ID);
-       t.AELogtoProgress();
-   }
-   //t.CheckTaskFinish(this);
-   if (FileCheck.CheckFileReadability(outputPath) && fileAge > CreationTime)//Mark Job complete. t.FinishReported &&
-   {
-       if (t.progress < 100) t.progress = 100;
-       t.FinishedFrameCount = t.adjustedFrameRange;
-       t.Status = 2;
-       //t.finished = true;
-       t.finishTime = DateTime.Now;
-       Status = 2;
-       finished = true;
-       Progress = 100;
-       EndTimes.Add(DateTime.Now);
-       RemainingTime = TimeSpan.Zero;
-       CompletedFrames = TotalFramesToRender;
-   }
-   else if (t.FinishReported)
-   {
-       Logic.taskFail(ID, t.ID, t.taskLogs.WorkerIDs.Last(), "File was created with errors. Rerendering...");
-   }
-   Progress = (float)Math.Round(ProgressPerFrame * t.FinishedFrameCount);
-   t.progress = Progress;
-   CompletedFrames = t.FinishedFrameCount;
-
-   if (!finished && Status != 5 && Status != 1)
-   {
-       if (StartTimes.Count() > EndTimes.Count() && DateTime.Now - StartTimes.Last() > TimeSpan.FromSeconds(5))
-       {
-           EndTimes.Add(DateTime.Now);
-       }
-       if (Status != 4) Status = 0;
-   }
-}
-public Job shallowCopy()
-{
-   return (Job)this.MemberwiseClone();
-}
-
-public void GetFusionJobProgress()
-{
-
-}
-public void GetBlenderJobProgress()
-{
-   double BeginProgress = Progress;
-   int TotalCompletedFrames = 0;
-   double jobPercent = 100 / Convert.ToDouble(TotalFramesToRender);
-   double currentJobPercent = 0;
-   //bool jobActive = false;
-   DateTime fileAge = DateTime.Now;
-
-   foreach (renderTask rt in renderTasks)
-   {
-       if (rt.Status == 0) continue;
-       rt.CheckTaskFinish(this);
-       if (rt.Status == 1) //Check Task for crash after task has been submitted for rendering.
-       {
-           rt.CheckForFail(MaxRenderTime, ID);
-           if (jobManager.CheckFiles(this, rt))//Checks to make sure the files actually exist.
-           {
-               if (rt.progress < 100) rt.progress = 100;
-               //rt.FinishedFrames = rt.adjustedFrameRange;
-               rt.Status = 2;
-               rt.finished = true;
-               //rt.lastUpdate = DateTime.Now;
-               rt.finishTime = DateTime.Now;
-           }
-           //jobActive = true;
-           TotalCompletedFrames += rt.FinishedFrameNumbers.Count();
-           if (vid) continue;
-       }
-       else if (rt.Status == 2)
-       {
-           TotalCompletedFrames += rt.FinishedFrameNumbers.Count();
-       }
-   }
-   currentJobPercent = (jobPercent * TotalCompletedFrames);
-   if (Progress <= currentJobPercent)//UpdateJob Progress
-   {
-       CompletedFrames = TotalCompletedFrames;
-       currentJobPercent = Math.Round(currentJobPercent);
-       Progress = currentJobPercent;
-
-   }
-
-   if (Progress >= 100 || renderTasks.All(rT => rT.finished == true))//Job finished
-   {
-       if (renderTasks.Any(t => t.progress < 100))
-       {
-           foreach (renderTask rt in renderTasks)
-           {
-               if (!rt.finished)
-               {
-                   rt.Status = 2;
-                   rt.progress = 100;
-                   rt.finished = true;
-                   rt.finishTime = DateTime.Now;
-               }
-           }
-       }
-       Status = 2;
-       finished = true;
-       Progress = 100;
-       EndTimes.Add(DateTime.Now);
-       RemainingTime = TimeSpan.Zero;
-       CompletedFrames = TotalFramesToRender;
-       //jobActive = false;
-   }
-
-   if (renderTasks.Any(t => t.Status == 1))
-   {
-       Status = 1;
-   }
-   else if (Status != 2) Status = 0;
-   else if (!finished && Status != 5)
-   {
-       if (StartTimes.Count() > EndTimes.Count())
-       {
-           EndTimes.Add(DateTime.Now);
-       }
-       Status = 0;
-   }
-}
-
-
-
-public void BuildStatusThread()
-{
-   ProgressThread = new Thread(() =>
-   {
-       Console.WriteLine($"{Name} Status thread Started");
-       while (Status == 1)
-       {
-           Thread.Sleep(5000);
-           UpdateUI = true;
-           Database.UpdateDBFile = true;
-           try
-           {
-               switch (RenderApp.ToLower())
-               {
-                   case ("ae"):
-                       if (vid) GetAEVidJobProgress(outputPath, CreationTime);
-                       else GetAEJobProgress();
-                       Logic.estimateRemainingTime(this);
-                       break;
-
-                   case ("blender"):
-                       GetAEJobProgress();
-                       Logic.estimateRemainingTime(this);
-                       break;
-
-                   case ("fusion"):
-                       GetFusionJobProgress();
-                       Logic.estimateRemainingTime(this);
-                       break;
-               }
-           }
-           catch
-           {
-               Console.WriteLine($"Failed to get progress on {Name} \nID: {ID}.");
-           }
-           if (fail)
-           {
-               Status = 4;
-               break;
-           }
-
-       }
-       UpdateUI = false;
-       if (PauseRequest) Status = 3;
-       Console.WriteLine($"{Name} Status thread closed");
-   });
-   ProgressThread.Name = Name + "_PThread";
-   return;
-}
-/*
-   switch (RenderApp.ToLower())
-   {
-
-       case ("ae"):
-           ProgressThread = new Thread(() =>
-           {
-               Console.WriteLine($"{Name} Status thread Started");
-               while (Status == 1)
-               {
-                   Thread.Sleep(100);
-                   UpdateUI = true;
-                   try
-                   {
-                       if (vid) GetAEVidJobProgress(outputPath, CreationTime);
-                       else GetAEJobProgress();
-                       Logic.estimateRemainingTime(this);
-                   }
-                   catch
-                   {
-                       Console.WriteLine($"Failed to get progress on {Name} \nID: {ID}.");
-                   }
-                   if (fail)
-                   {
-                       Status = 4;
-                       break;
-                   }
-               }
-               UpdateUI = false;
-               Console.WriteLine($"{Name} Status thread closed");
-
-           });
-           ProgressThread.Name = Name + "_PThread";
-           return;
-
-       case ("blender"):
-           ProgressThread = new Thread(() =>
-           {
-               Console.WriteLine($"{Name} Status thread Started");
-               while (Status == 1)
-               {
-                   UpdateUI = false;
-                   Thread.Sleep(500);
-                   try
-                   {
-                       GetBlenderJobProgress();
-                       Logic.estimateRemainingTime(this);
-                   }
-                   catch
-                   {
-                       Console.WriteLine($"Failed to get progress on {Name} \nID: {ID}.");
-                   }
-
-                   if (fail)
-                   {
-                       Status = 4;
-                       break;
-                   }
-               }
-               UpdateUI = false;
-               Console.WriteLine($"{Name} Status thread closed");
-
-           });
-           ProgressThread.Name = Name + "_PThread";
-           return;
-
-       case ("fusion"):
-           ProgressThread = new Thread(() =>
-           {
-               Console.WriteLine($"{Name} Status thread Started");
-               while (Status == 1)
-               {
-                   Thread.Sleep(500);
-                   try
-                   {
-                       GetFusionJobProgress();
-                       Logic.estimateRemainingTime(this);
-                   }
-                   catch
-                   {
-                       Console.WriteLine($"Failed to get progress on {Name} \nID: {ID}.");
-                   }
-                   if (fail)
-                   {
-                       Status = 4;
-                       break;
-                   }
-
-               }
-               Console.WriteLine($"{Name} Status thread closed");
-               if (fail) Status = 4;
-           });
-           ProgressThread.Name = Name + "_PThread";
-           return;
-       default:
-           ProgressThread = null;
-           return;
-   }*/
     }
-
 }

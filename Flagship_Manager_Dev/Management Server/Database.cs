@@ -1,5 +1,4 @@
 ﻿using FlagShip_Manager.Objects;
-//using System.Text.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
 
@@ -7,6 +6,9 @@ namespace FlagShip_Manager.Management_Server
 {
     public class DBObject
     {
+        //Custom Database object. 
+        //TODO: Repalce with MongoDB or other. 
+
         public WorkerObject[]? WorkerList { get; set; }
         public Job[]? JobList { get; set; }
         public int[]? ArchiveJobs { get; set; }
@@ -14,19 +16,18 @@ namespace FlagShip_Manager.Management_Server
     }
     public class Database
     {
+        //Database class is used for storing and loading DBObjects for long term storge. 
+
         public static bool Startup = true;
         public static bool UpdateDBFile = false;
-        //private static DateTime LastSave = DateTime.MinValue;
         private static readonly string DataBaseFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_DATABASE.txt";
-        //public static string SettingsFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_Server_Settings.txt";
         public static void DataBaseManager()
         {
+            //Runs on startup to load existing Database. Then stays in a loop to save database as needed. 
             Load(DataBaseFilePath);
-
-            Thread.Sleep(4000);
+            Thread.Sleep(1000);
             ClearBrokenJobs();
             Thread.Sleep(1000);
-            //Startup = false;
             while (true)
             {
                 if (UpdateDBFile)
@@ -39,18 +40,13 @@ namespace FlagShip_Manager.Management_Server
         }
         public static void Save(string _filePath)
         {
+            //Saves DBObject to disk.
+            //TODO: Build DBObject builder.
 
             DBObject DB = new DBObject();
-            //DB.WorkerList = WorkerServer.WorkerList.ToArray();
-            //List<Job> TempList = new List<Job>();
             DB.JobList = new List<Job>(jobManager.jobList).ToArray();
-            //            foreach (var job in DB.JobList)
-            //            {
-            //                job.ProgressThread = null;
-            //            }
             DB.ActiveJobs = new List<int>(jobManager.ActiveIDList).ToArray();
             DB.ArchiveJobs = new List<int>(jobManager.ArchiveIDList).ToArray();
-            //DB.ArchiveJobList = jobManager.jobArchive.ToArray();
             DB.WorkerList = new List<WorkerObject>(WorkerServer.WorkerList).ToArray();
             byte[] DBSerial;
             try
@@ -59,7 +55,6 @@ namespace FlagShip_Manager.Management_Server
                 DBSerial = ObjectToByteArray(DB);
                 var Compressed = Misc.CompressArray(DBSerial);
                 File.WriteAllBytes(_filePath, Compressed);
-                //LastSave = DateTime.Now;
             }
             catch (Exception EX)
             {
@@ -69,6 +64,8 @@ namespace FlagShip_Manager.Management_Server
         }
         public static void Load(string _filePath)
         {
+            //Loads DBObject from disk.
+
             DBObject DB = new DBObject();
             byte[] DBarry;
             if (File.Exists(_filePath))
@@ -77,7 +74,7 @@ namespace FlagShip_Manager.Management_Server
                 {
                     DBarry = File.ReadAllBytes(_filePath);
                     var Decompress = Misc.DeCompressArray(DBarry);
-                    DB = ByteArrayToObject(Decompress);
+                    DB = (DBObject)ByteArrayToObject(Decompress);
                 }
 
                 catch (Exception EX)
@@ -85,7 +82,6 @@ namespace FlagShip_Manager.Management_Server
                     Console.WriteLine("Failed to read Database. Possibly not able to access file.\nERROR MESSAGE:\n");
                     Console.WriteLine(EX.Message);
                 }
-                //DB = ByteArrayToObject(DBString.Split());
                 if (DB != null)
                 {
                     CheckDatabase(DB);
@@ -100,13 +96,16 @@ namespace FlagShip_Manager.Management_Server
         }
         public static void CheckDatabase(DBObject _DB)
         {
+            //Checks Loaded database for any Jobs or RenderTasks that were active during shutdown. 
+            //If RenderTasks were active, Output files are checked. If files are missing or corrupt A thread is created calling RenderTask.taskFail(). 
+
             int finishCount;
             if (_DB == null) return;
             if (_DB.JobList != null)
             {
                 foreach (Job j in _DB.JobList)
                 {
-                    
+
                     finishCount = 0;
                     List<Thread> Failthreads = new List<Thread>();
                     foreach (renderTask t in j.renderTasks)
@@ -116,27 +115,12 @@ namespace FlagShip_Manager.Management_Server
                         {
                             t.Status = 4;
                             j.Status = 4;
-                            //t.attempt = 4;
                         }
-                        //int BlankCount = 0;
-                        //for (int i = 0; i < LogIndex; i++) if (t.Log[i] == "") BlankCount++;
                         if (t.Status == 1)
                         {
-                            /*
-                            for (int i = 0; i < t.Log.Count(); i++)
-                            {
-                                if (t.Log[i] == "" && BlankCount > 1)
-                                {
-                                    t.Log.RemoveAt(LogIndex);
-                                    LogIndex--;
-                                    i--;
-                                }
-                            }
-                            */
                             if (j.CheckFiles(t, true))
                             {
                                 t.Status = 2;
-                                //t.finished = true;
                                 if (t.taskLogs.CurrentWorker == null && LogIndex > 0)
                                 {
                                     t.taskLogs.removeLast();
@@ -147,7 +131,7 @@ namespace FlagShip_Manager.Management_Server
                             }
                             if (t.taskLogs.WorkerLog[LogIndex] != "" && t.progress != 100)
                             {
-                                Failthreads.Add(new Thread(() => t.taskFail("\n\n JobFailed during server reboot. Moving to new attempt."))); //Logic.taskFail(j.ID, t.ID, t.taskLogs.WorkerIDs.Last(), "\n\n JobFailed during server reboot. Moving to new attempt.")));
+                                Failthreads.Add(new Thread(() => t.taskFail("\n\n JobFailed during server reboot. Moving to new attempt.")));
                             }
                             t.Status = 0;
 
@@ -166,7 +150,7 @@ namespace FlagShip_Manager.Management_Server
                     }
                     else if (j.Status == 1) j.Status = 0;
                     jobManager.jobList.Add(j);
-                    foreach(Thread fail in Failthreads)
+                    foreach (Thread fail in Failthreads)
                     {
                         fail.Start();
                         Thread.Sleep(10);
@@ -180,6 +164,8 @@ namespace FlagShip_Manager.Management_Server
         }
         public static byte[] ObjectToByteArray(Object obj)
         {
+            //Converts Object to byte array. 
+
             MemoryStream ms = new MemoryStream();
             byte[] Serialized = new byte[0];
             try
@@ -187,7 +173,7 @@ namespace FlagShip_Manager.Management_Server
                 using (BsonWriter bW = new BsonWriter(ms))
                 {
                     JsonSerializer ser = new JsonSerializer();
-                    ser.Serialize(bW, obj); //This is throwing an error.
+                    ser.Serialize(bW, obj);
                 }
                 Serialized = ms.ToArray();
 
@@ -198,10 +184,12 @@ namespace FlagShip_Manager.Management_Server
             }
             return Serialized;
         }
-        public static DBObject? ByteArrayToObject(byte[] arrBytes)
+        public static object? ByteArrayToObject(byte[] arrBytes)
         {
+            //Attempts to Converts byte array to DBObject. If fail returns null.
+
             MemoryStream ms = new MemoryStream(arrBytes);
-            DBObject Deserialized = new DBObject();
+            var Deserialized = new DBObject();
             try
             {
                 using (BsonReader bR = new BsonReader(ms))
@@ -219,6 +207,9 @@ namespace FlagShip_Manager.Management_Server
         }
         private static void ClearBrokenJobs()
         {
+            //Checks for jobs that were duplicated during saving. 
+            //TODO: Find the reason Jobs sometimes breake. 
+
             int count = 0;
             List<int> RemoveList = new List<int>();
             Thread.Sleep(1000);

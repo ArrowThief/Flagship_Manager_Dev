@@ -6,21 +6,24 @@ namespace FlagShip_Manager.Objects
 {
     public class tcpPacket
     {
+        //Object used for sending and reciving data from Worker Clients
+        //TODO: Rename, possibly workerPacket, or wPacket.
+
         public string? command { get; set; }
         public int status { get; set; } = 0;//Job/Task status. queued(0), Rendering(1), finished(2) paused(3), fialed(4), canceled(5).
-        public string[] arguments { get; set; } = new string[0];//Aruguments RenderType(0) RenderCommand(1), OutputPath(2), 
+        public string[] arguments { get; set; } = new string[0]; 
         public int senderID { get; set; } = 0000;
         public string[] Logs { get; set; } = { "No log Data." };
         public int LogLines { get; set; } = 0;
 
         public void Send(Socket _s)
         {
+            //Compresses and sends packet to passed socket.
             try
             {
                 if (arguments == null) arguments = new string[0];
                 if (Logs == null) Logs = new string[0];
                 if (senderID == 0) senderID = 1000;
-                //var SerializedPacket = JsonSerializer.Serialize(_sendPacket);
                 byte[] sendBuffer;
                 byte[] CompressBufer;
 
@@ -40,10 +43,12 @@ namespace FlagShip_Manager.Objects
         }
         public bool recieve(Socket _s)
         {
+            //Recieves and decompresses data from passed socket. Returns true if send is sucsessful.
+
             tcpPacket temp;
             if (_s.Connected)
             {
-                //var test = Program.ClientID;
+                //Socket is conenctd.
 
                 byte[] recBuf = new byte[8192];
                 try
@@ -51,8 +56,6 @@ namespace FlagShip_Manager.Objects
                     if (_s.Connected) _s.Receive(recBuf);
                     var decompressedBuffer = Misc.DeCompressArray(recBuf);
                     recBuf = decompressedBuffer;
-                    //int lastIndex = Array.FindLastIndex(recBuf, b => b != 0);
-                    //Array.Resize(ref recBuf, lastIndex + 1);
                     temp = JsonSerializer.Deserialize<tcpPacket>(recBuf);
                     command = temp.command;
                     status = temp.status;
@@ -64,10 +67,8 @@ namespace FlagShip_Manager.Objects
                 }
                 catch
                 {
-
+                    //Not much I can do from here.
                 }
-
-
 
             }
             return false;

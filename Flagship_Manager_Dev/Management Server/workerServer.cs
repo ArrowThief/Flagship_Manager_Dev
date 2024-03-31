@@ -8,14 +8,17 @@ namespace FlagShip_Manager
 {
     internal class WorkerServer
     {
-        //private static byte[] _buffer = new byte[4096];
-        //public static List<WorkerHistoryObject> WorkerHistory = new List<WorkerHistoryObject>();
+        //Stores workerObjects for every worker that has previously connected. 
+        //Listens for and creates connection threads for new workers. 
+
         public static List<WorkerObject> WorkerList = new List<WorkerObject>();
         private static Socket _serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         private static Thread Cleanup = new Thread(() => clientCleanup());
 
         private static void clientCleanup()
         {
+            //Disconnects workers who still have an active TCP connection, but haven't responded in more than 4 minutes. 
+
             while (true)
             {
                 Thread.Sleep(1000);
@@ -47,29 +50,30 @@ namespace FlagShip_Manager
             Cleanup.Start();
             Readout.ReadoutBuffer = "Setting Up server";
             _serverSocket.Bind(new IPEndPoint(IPAddress.Any, 32761));
-            _serverSocket.Listen(100); //Backlog is more about how many clients per second you have connected rather than how many total. If more than 5 connections are attempted at the same time then any beyond the 5th will fail and need to retry. 
+            _serverSocket.Listen(100);
             _serverSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
 
 
         }
-        public static void AcceptCallback(IAsyncResult AR)//Accept call back and build worker info.
+        public static void AcceptCallback(IAsyncResult AR)
         {
+            //Accept call back from workers and starts new worker thread.
+
             Socket socket = _serverSocket.EndAccept(AR);
             Thread SocketThread = new Thread(() => { SendRecieveLoop(socket); });
             SocketThread.Start();
-            //socket.BeginReceive(_buffer, 0, _buffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), client.socket);
             _serverSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
         }
         private static void SendRecieveLoop(Socket _socket)
         {
+            //Worker connection loop. While worker is connected loop will send and recieve data every second. 
+            //TODO: Find bug that sometimes caues workers to get caught in a loop of connecting and disconnecting. 
 
             WorkerObject worker = new WorkerObject();
-            //worker.socket = _socket;
             tcpPacket? sendPacket = new tcpPacket();
             tcpPacket? recPacket = new tcpPacket();
             while (_socket.Connected)
             {
-                //tcpPacket WorkerPacket;// = RecievePacket(_socket, worker.name);
                 if (!recPacket.recieve(_socket))
                 {
                     Console.WriteLine($"Failed to read packet from {worker.name}");
@@ -81,17 +85,6 @@ namespace FlagShip_Manager
                     sendPacket.arguments = new string[0];
                 }
                 worker.lastSeen = DateTime.Now;
-                /*if(WorkerPacket.command == "failedpacketread")
-                {
-                    sendPacket = worker.PacketHistory[0];
-                }else 
-                if (worker.JobID != 0 && worker.Status == 0 && worker.lastSubmittion.AddSeconds(30) < DateTime.Now)
-                {
-                    Console.Write($"\n{worker.name} has an assigned job but claims to be idle\nTask: {worker.renderTaskID}");
-                    sendPacket = new tcpPacket();
-                    sendPacket.command = "acknowledge_me";
-                }
-                */
                 sendPacket = BuildResponse(recPacket, ref worker);
                 try
                 {
@@ -110,8 +103,6 @@ namespace FlagShip_Manager
                     sendPacket.Send(_socket);
                     worker.packetBuffer = null;
                     worker.LastSentPacket = sendPacket;
-                    //if (worker.PacketHistory.Count > 10) worker.PacketHistory.RemoveAt(9);
-                    //worker.PacketHistory.Add(sendPacket);
 
                 }
                 catch (Exception ex)
@@ -119,40 +110,38 @@ namespace FlagShip_Manager
                     Console.WriteLine("ERROR: " + ex);
                 }
             }
-            //worker.Status = 4;
-            //After Worker dissconnect.
             Console.WriteLine("Worker Dissconnect");
 
             if (worker.Status == 1)
             {
-                //Logic.taskFail(jobManager.jobList[JTindex[0]].ID, jobManager.jobList[JTindex[0]].renderTasks[JTindex[1]].ID, worker.WorkerID, "has dissconnected unexpectedly during a render. Its assigned task will be reclaimed.");
-                worker.WorkerTaskFail("has dissconnected unexpectedly during a render. Its assigned task will be reclaimed.");
+                string l = $"{worker.name} has dissconnected unexpectedly during a render. Its assigned task will be reclaimed.";
+                worker.WorkerTaskFail(l);
+                worker.LogBuffer = l;
 
             }
             else worker.LogBuffer = $"{worker.name} was not doing work, so no task needs to be reclaimed.";
 
             worker.Status = 7;
-            //WorkerList.Remove(worker);
-
         }
         private static tcpPacket? BuildResponse(tcpPacket _packet, ref WorkerObject _worker)
         {
-            //bool Archived = false;
+            //builds a response tcpPacket to a recieved tcpPacket.
+            //TODO: Remove references to Passive mode. 
+
             Job? j = null;
             renderTask? rT = null;
             tcpPacket sendPacket = new tcpPacket();
             if (_worker.Status != 3) _worker.Status = _packet.status;
-            //int attempParse = 0;
             if (_worker.JobID != 0)
             {
                 int JID = _worker.JobID;
                 int RTID = _worker.renderTaskID;
                 try
                 {
-                    
                     j = jobManager.jobList.Find(jl => jl.ID == JID);
-                    if (j == null)//Job not found in Job list, check Job archive.
+                    if (j == null)
                     {
+                        //Job not found in Job list, check Job archive.
                         Console.WriteLine($"Worker has attempted to report on a Job that doesn't exist. \njob ID: {JID}\nTask ID: {RTID}");
                         WorkerServer.cancelWorker(_worker, false, false);
                     }
@@ -185,29 +174,43 @@ namespace FlagShip_Manager
                 }
             }
             if (_packet.command == null) return null; 
-            //Add try here?
             try
             {
-                switch (_packet.command.ToLower()) //Currently there are a total of 13 cases, this could be simplifed by switching to status codes (int) rather than using strings. 
+                switch (_packet.command.ToLower()) 
                 {
-                    case "find": //This is for clients to find the server.
+                    //Currently there are a total of 13 possible cases.
+                    //TODO: Simplify by switching to int rather than strings. Less readable, but faster.
+
+                    case "find": 
+                        
+                        //Responds to worker seaching for server IP.
+                        
                         sendPacket.command = "acknowledge";
                         return sendPacket;
 
-                    case "setup": //this fills out the client data.
+                    case "setup": 
+                        
+                        //Builds new workerObject and adds it to List.
+                        
                         return newWorkerSetup(_packet, ref _worker); ;
 
-                    case "dissconnect": //Allows for disconnecting gracefully.
-                                        //if (rT != null) Logic.taskFail(j.ID, rT.ID, _worker, "Worker was shut down during render.");
+                    case "dissconnect": 
+                        
+                        //Allows for disconnecting gracefully.
+                        
                         dissconnectClient(_worker);
                         return null;
                     case "busy":
+                        
+                        //Worker isn't available to respond for some reason. 
+                        
                         rT.Status = 0;
                         rT.taskLogs.ClearLast();
-                        //rT.Worker[LogIndex] = "";
-                        //rT.Log[LogIndex] = "";
                         break;
-                    case "statusupdate": //Status update.
+                    case "statusupdate": 
+                        
+                        //Default update packet.
+                        
                         if (rT != null) sendPacket.LogLines = rT.taskLogs.LogLines.Last();//Sends the current number of logs recieved from the worker.
                         if (_worker.Status == 0 && !_worker.awaitUpdate)
                         {
@@ -240,7 +243,10 @@ namespace FlagShip_Manager
                         }
                         break;
 
-                    case "return":  //Task returned. State of task can be included in arguments
+                    case "return":  
+                        
+                        //Task returned. State of task can be included in arguments
+                        //TODO: cleanup to match new worker responses. 
 
                         if (rT != null)
                         {
@@ -291,7 +297,9 @@ namespace FlagShip_Manager
                         break;
 
                     case "logpart":
-                        //A part of the log.
+
+                        //recieved part of the log rebuild, final part will be sent with a return command.
+                        
                         foreach (var logLine in _packet.Logs)
                         {
                             _worker.LogBuffer += logLine;
@@ -301,20 +309,28 @@ namespace FlagShip_Manager
                         sendPacket.LogLines = _worker.LogCount;
                         break;
 
-                    case "acknowledge_me": //Ask Worker to acknoladge its existance.
+                    case "acknowledge_me": 
+                        
+                        //Requests acknoledgement from worker.
+                        
                         sendPacket.command = "acknowledge";
                         _worker.awaitUpdate = false;
                         _worker.renderTaskID = 0;
                         _worker.JobID = 0;
                         break;
 
-                    case "acknowledge": //respond to Workers requst for acknoladgedgement.
-                        var debug = _packet.command; //This doens't do anything. Just exists to see what was in the packet.
+                    case "acknowledge": 
+                        
+                        //respond to Workers requst for acknoladgedgement.
+                        
                         sendPacket.command = "getupdate";
                         _worker.awaitUpdate = false;
                         break;
 
-                    case "passive": //Deprecated way to watch the servers log from a worker. Replaced by GUI.
+                    case "passive": 
+                        
+                        //Deprecated way to watch the servers log from a worker. Replaced by GUI.
+                        
                         _worker.ConsoleBuffer = $"{_worker.name} Switching to passive mode.";
                         try
                         {
@@ -329,25 +345,38 @@ namespace FlagShip_Manager
                         break;
 
                     case "available":
+
+                        //Worker is stating its status is avalable for work 
+                        //Deprecated, status is set in status update. 
+
                         _worker.Status = 0;
                         _worker.ConsoleBuffer = $"{_worker.name} is once again available to render.";
                         sendPacket.command = "getupdate";
                         break;
 
                     case "sleeping":
+
+                        //Sets worker to no longer recieve renderTasks, but remains connected.
+                        //TODO: Reduce packet frequency to once every minute when sleeping.
+
                         _worker.Status = 3;
                         sendPacket.command = "sleep";
                         _worker.ConsoleBuffer = $"{_worker.name} is sleeping";
                         break;
 
                     case "failedpacketread":
+
+                        //Failed to read packet, requests the same packet again. 
+
                         if (_worker.LastSentPacket != null) sendPacket = _worker.LastSentPacket;
                         else if (_worker != null) dissconnectClient(_worker);
                         else sendPacket.command = "getupdate";
-                        //else _worker.socket.Disconnect(false);
                         break;
 
                     default:
+
+                        //If no response can be built, assume read failed.
+
                         sendPacket.command = "failedPacketRead";
                         break;
                 }
@@ -355,39 +384,46 @@ namespace FlagShip_Manager
             }
             catch 
             {
+                //TODO: Check if this is causing problems.
                 return null;
             }
         }
         private static tcpPacket newWorkerSetup(tcpPacket receivedPacket, ref WorkerObject _worker)
         {
-            //bool Existing = false;
+            //creates new workerObject, adds it to lists and returns a response tcpPacket.
+            //TODO: Rewrite ID creation to be a simpler itteration. 
+
             tcpPacket returnPacket = new tcpPacket();
-            if (WorkerList.Any(w => w.WorkerID == receivedPacket.senderID))//Worker exists in worker history
+            if (WorkerList.Any(w => w.WorkerID == receivedPacket.senderID))
             {
-                //Existing = true;
-                //_worker.Active(WorkerHistory.Find(w => w.WorkerID.ToString() == receivedPacket.senderID));
-                //if (WorkerList.Any(w => w.WorkerID.ToString() == receivedPacket.senderID))
-                //{
-                //    WorkerList.Remove(WorkerList.Find(w => w.WorkerID.ToString() == receivedPacket.senderID));
-                //}
+                //Worker exists in worker history
+
                 _worker = WorkerList.Find(w => w.WorkerID == receivedPacket.senderID);
                 returnPacket.command = "acknowledge_me";
                 returnPacket.arguments = new string[1];
             }
-            else //Worker has never connected or history was cleared.
+            else 
             {
-                if (receivedPacket.senderID != -1 && !WorkerList.Any(w => w.WorkerID == receivedPacket.senderID))//Does worker have an existing ID? if so is it in use?
+                //Worker has never connected or history was cleared.
+
+                if (receivedPacket.senderID != -1 && !WorkerList.Any(w => w.WorkerID == receivedPacket.senderID))
                 {
+                    //Checks if worker has an existing ID and if it is in use by another worker.
+
                     _worker.WorkerID = receivedPacket.senderID;
                     returnPacket.command = "acknowledge";
                     returnPacket.arguments = new string[1];
                 }
-                else //No ID or existing ID. Assigning new ID.
+                else 
                 {
+                    //Assigning new ID.
+
                     Random random = new Random();
                     int newID = random.Next(9999, 99999);
-                    while (true)//Check for duplicated workerIDs
+                    while (true)
                     {
+                        //Check for duplicated workerIDs
+
                         if (WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
                         else break;
                     }
@@ -399,11 +435,8 @@ namespace FlagShip_Manager
                 _worker.name = receivedPacket.arguments[0];
                 _worker.BuildRenderAppList(JsonSerializer.Deserialize<string[]>(receivedPacket.arguments[1]), receivedPacket.arguments[2].ToLower());
                 _worker.GPU = bool.Parse(receivedPacket.arguments[3]);
-                //string defaultApp = receivedPacket.arguments[2].ToLower();
-                //if (defaultApp == "ae" || defaultApp == "fusion" || defaultApp == "blender") _worker.defaultRenderType = defaultApp;
                 _worker.lastSeen = DateTime.Now;
                 WorkerList.Add(_worker);
-                //WorkerHistory.Add(_worker.History());
                 Console.WriteLine($"New Worker added to WorkerList");
                 Database.UpdateDBFile = true;
             }
@@ -413,14 +446,15 @@ namespace FlagShip_Manager
         }
         internal static void dissconnectClient(WorkerObject c)
         {
-            //c.socket.Disconnect(false);
-            c.ConsoleBuffer = "Disconnected.";//Could add workers name here once implemented.
+            //Graceful dissconnection. 
+
+            c.ConsoleBuffer = "Disconnected.";
             c.Status = 7;
-            //WorkerList.Remove(c);
         }
         internal static void cancelWorker(WorkerObject c, bool CancelJob, bool blackList)
         {
-            //var jl = ;
+            //Request worker cancel currently active renderTask.
+
             if (c == null) return;
             var cancelPacket = new tcpPacket();
             bool fullbreak = false;
@@ -451,6 +485,8 @@ namespace FlagShip_Manager
         }
         public static void killWorker(WorkerObject _c)
         {
+            //Shuts down worker software on client PC.
+
             _c.packetBuffer = new tcpPacket();
             _c.packetBuffer.command = "dissconnect";
             _c.packetBuffer.arguments = new string[0];
@@ -459,118 +495,3 @@ namespace FlagShip_Manager
         }
     }
 }
-
-/*
- * public static void sendPacket(tcpPacket _sendPacket, Socket _socket)
-        {
-            //var utf8 = Encoding.UTF8;
-            //JsonString = JsonSerializer.Serialize(_sendPacket);
-            //byte[] sendBuffer = utf8.GetBytes(JsonString);
-            try
-            {
-                if (_sendPacket.arguments == null) _sendPacket.arguments = new string[0];
-                if (_sendPacket.Logs == null) _sendPacket.Logs = new string[0];
-                if (_sendPacket.senderID == 0) _sendPacket.senderID = 1000;
-                //var SerializedPacket = JsonSerializer.Serialize(_sendPacket);
-                byte[] sendBuffer = JsonSerializer.SerializeToUtf8Bytes(_sendPacket);
-                _socket.Send(sendBuffer, SocketFlags.None);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Fialed to send packet. \nERROR: " + ex);
-            }
-        }
- * public static void SendCallback(IAsyncResult AR)
-        {
-            Socket socekt = (Socket)AR.AsyncState;
-            socekt.EndSend(AR);
-        }
- * internal static void sleepWorker(WorkerObject c)
-        {
-            c.Status = 3;
-            c.ConsoleBuffer = $"{c.name} is sleeping";
-            c.packetBuffer = new tcpPacket();
-            c.packetBuffer.command = "sleep";
-            c.packetBuffer.arguments = new string[0];
-        }
-        internal static void wakeWorker(WorkerObject c)
-        {
-            Thread.Sleep(300);
-            c.packetBuffer = new tcpPacket();
-            c.packetBuffer.command = "wakeup";
-            c.packetBuffer.arguments = new string[0];
-        }
-        private static tcpPacket? RecievePacket(Socket _socket, string WorkerName = "Missing Info")
-        {
-
-            try
-            {
-                byte[] recBuf = new byte[8192];
-                int count = 0;
-                tcpPacket? recPacket = null;
-                _socket.Receive(recBuf);
-
-                while (true)
-                {
-                    try
-                    {
-                        int lastIndex = Array.FindLastIndex(recBuf, b => b != 0);
-
-                        Array.Resize(ref recBuf, lastIndex + 1);
-                        if (recBuf.Length >= 8192) throw new Exception($"Packet is too large to transfer.\nSize:{recBuf.Length}");
-                        recPacket = JsonSerializer.Deserialize<tcpPacket>(recBuf);
-                        break;
-                    }
-                    catch
-                    {
-                        //Console.WriteLine($"Failed to read packet from {WorkerName}. Attempt: {count}\n{ex}");
-                        if (count > 2) break;
-                        count++;
-                    }
-
-                }
-                if (recPacket == null) throw new Exception($"Could not read Packet from {WorkerName}");
-                return recPacket;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.ToString());//Should probably have this written somewhere in the GUI.
-                tcpPacket FailPacket = new tcpPacket();
-                FailPacket.senderID = 1;
-                FailPacket.command = "failedPacketRead";
-                FailPacket.status = 0;
-                FailPacket.Logs = new string[1];
-                FailPacket.Logs[0] = ex.ToString();
-                FailPacket.arguments = new string[0];
-                return FailPacket;
-            }
-
-        }
-
-       private static void ConfirmWorkerResponse(Job? _j, ref renderTask _t, ref WorkerObject _worker, int TotalLogLines)
-       {
-           int failCount = 0;
-
-           while (true)
-           {
-
-               if (_t.progress >= 99 || _t.Status == 2)
-               {
-                   _worker.JobID = 0;
-                   _worker.renderTaskID = 0;
-                   break;
-               }
-               else if (failCount > 10)
-               {
-                   Logic.taskFail(_j.ID, _t.ID, _worker.WorkerID, "Worker lied about finishing the task.");
-                   break;
-               }
-               else
-               {
-                   failCount++;
-                   Thread.Sleep(250);
-               }
-
-           }
-       }
-       */

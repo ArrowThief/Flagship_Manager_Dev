@@ -2,6 +2,9 @@
 {
     public class JobGUI
     {
+        //Seprate class for UI. Not currenty in use.
+        //TODO: Split Job into two classes, this one for UI and the other for render logic.
+
         public int ID { get; set; }
         public bool extend { get; set; } = false;
         public string JobArrow { get; set; } = "Images/arrow right.png";

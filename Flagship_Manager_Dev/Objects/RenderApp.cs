@@ -2,6 +2,9 @@
 {
     public class RenderApp
     {
+        //Stores render app info for each of the three render apps
+        //TODO: Merge this into Job and jobGUI or set it with JS and HTML.
+
         public string ImagePath { get; set; } = "";
         public string AppName { get; set; } = "";
         public bool Enabled { get; set; } = true;

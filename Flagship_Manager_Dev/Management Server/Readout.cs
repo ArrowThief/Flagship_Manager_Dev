@@ -2,6 +2,9 @@
 {
     internal class Readout
     {
+        //Command line interface. Totally deprecated.
+        //TODO: Remove class and references.
+
         public static string ReadoutBuffer = "";
         public static List<string> consoleBuffer = new List<string>();
         internal static int currentJobItems = 0;

@@ -4,24 +4,30 @@ namespace FlagShip_Manager.Objects
 {
     public class Path_Settings
     {
+        //Stores the three paths flagship needs to function. 
+        //Setup on first launch. 
+
         public string TempOutputPath { get; set; } = "";
         public string TempProjectPath { get; set; } = "";
         public string CtlFolder { get; set; } = "";
 
         public Path_Settings(string _tmpOutputPath = "", string _tempProjectPath = "", string _ctlFolder = "")
         {
+            //Builds Path_Settings object.
+
             TempOutputPath = _tmpOutputPath;
             TempProjectPath = _tempProjectPath;
             CtlFolder = _ctlFolder;
         }
         public void Save(string _filePath = "")
         {
-            //Path_Settings temp = new Path_Settings();
+            //Saves Path_Setting Object into users Documents folder for later use. 
+            //Stores in plain text.
+
             if (_filePath == "") _filePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_Settings.txt";
             try
             {
                 string output = JsonConvert.SerializeObject(this);
-                //var temp = JsonConvert.DeserializeObject<Path_Settings>(output);
                 File.WriteAllText(_filePath, output);
 
             }
@@ -33,6 +39,8 @@ namespace FlagShip_Manager.Objects
         }
         public bool Load(string _filePath = "")
         {
+            //Loads existing Path_Settings file.
+
             if (_filePath == "") _filePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_Settings.txt";
             if (!File.Exists(_filePath)) return false;
             Path_Settings Input = new Path_Settings();
@@ -64,6 +72,8 @@ namespace FlagShip_Manager.Objects
         }
         public bool CheckSettings()
         {
+            //Checks if Path_Settings object is valid.
+
             if (TempOutputPath == "") return false;
             if (TempProjectPath == "") return false;
             if (CtlFolder == "") return false;
