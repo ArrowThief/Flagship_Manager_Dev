@@ -5,6 +5,11 @@
 @using System.Text.RegularExpressions
 @using System.Timers
 @inject IJSRuntime RunJS
+@*
+    Job list Component. 
+    Archive togle controls which job buttons apear.
+*@
+
 
 <style>
 
@@ -91,8 +96,6 @@
     .textYellow {
         -webkit-text-fill-color: yellow;
     }
-
-
 
     .test {
         position: absolute; 
@@ -189,10 +192,10 @@
 
 
                     <div id="@BarID" style="background: #424242; width: 100%; height:32px; clear: both;" hidden=@hidden>
-                        <div class="TableCell" style="margin-left:4px; width: 45px; background: @GetStatusColor(J.Status); height:25px; border-radius:2px;"><img src="@GetStatusIcon(J.Status)" style="opacity:.5; width:20px; position:relative; bottom:1px;" /> </div>
+                        <div class="TableCell" style="margin-left:4px; width: 45px; background: @StatusColor[J.Status]; height:25px; border-radius:2px;"><img src=@StatusIcon[J.Status] style="opacity:.5; width:20px; position:relative; bottom:1px;" /> </div>
                         <div class="TableCell" style="width:50px"><button class="ExpandButton" @onclick="() => OpenPanel(J.ID)"><img style="transition:all; transition-duration:.2s" id="@Arrow" src="Images/arrow right.png" width="15" /></button></div>
                         <div style="width:45px; float:left; position:relative; top:1px; text-align: center;">
-                            <img src=@GetAppIcon(J.RenderApp) style="width:30px" />
+                            <img src=@apps[J.RenderApp.ToLower()] style="width:30px" />
                         </div>
                         <div class="TableCell" style="width: 400px;"> <label>@J.Name</label></div>
                         @if (J.Archive)
@@ -285,7 +288,6 @@
                     <div style="width:1520px; height:4px;"></div>
                     
                 }
-                    @*<Job_UI UpdateList="() => UpdateList()" Archive="Archive" hidden="@hidden" CheckBox="AddorRemoveActiveChecked" LogOpen="OpenLogView" J="jobManager.jobList[JIndex]"></Job_UI>*@
                 </div>
             }catch{
                 i--;
@@ -311,31 +313,64 @@
     public List<int> JobIDList { get; set; } = new List<int>();
     [Parameter]
     public EventCallback FullUpdate { get; set; }
-    //[Parameter]
-    //public EventCallback<string> BatchSelect {get; set;}
     [Parameter]
     public EventCallback<string> CheckID { get; set; }
 
+    Dictionary<string, string> apps = new Dictionary<string, string>()
+    {
+        {"ae",@"Images/App/AE.png" },               //AfterEffects Icon
+        {"blender", @"Images/App/blender.png"},     //Blender Icon
+        {"fusion", @"Images/App/fusion.png"}        //Fusion Icon
+    };
+    Dictionary<int, string> StatusIcon = new Dictionary<int, string>(){
+
+        {0,"Images/Status/Queueue_whitey.png" },    //Queued
+        {1, "Images/Status/Render_Whitey.png" },    //Rendering
+        {2, "Images/Status/Finished_Whitey.png" },  //Finished
+        {3, "Images/Status/Pause_whitey.png" },     //Paused
+        {4, "Images/Status/Failed_whitey.png" },    //Failed
+        {5, "Images/Status/Cancelled_whitey.png" }, //Cancelled
+        {6, "Images/Status/Failed_whitey.png" }     //Failed
+    };
+    Dictionary<int, string> StatusColor = new Dictionary<int, string>()
+    {
+        {0, "#7E469E" },
+        {1,"#547AB5" },
+        {2,"#09B18A"},
+        {3,"#C78753"},
+        {4,"#C36670"},
+        {5,"#595959"}
+
+    };
+
     private IJSObjectReference JS;
-    //public string LogDisplay = "none";
+    
     private List<int> CheckedIDs = new List<int>();
+    
     private bool ShowActiveBatch = false;
     private bool ShowArchiveBatch = false;
-    //public static string LogDisplay = "none";
-    public renderTask? LogTask = null;
-    public string backgroundStyle = "Background";
     public bool hidden = false;
-    public string OpenClosed = "hidden";
-    private Timer? time2;
     private bool DoubleLog = false;
+
+    public string backgroundStyle = "Background";
     private string BlackListActive = "none";
+    public string OpenClosed = "hidden";
+
+    private Timer? time2;
+    public renderTask? LogTask = null;
 
     private int ConvertFromIDtoIndex(int _ID)
     {
+        //Returns the index of a job from it's ID value
+        //TODO: For goodness sake use a hashmap. 
+
         return jobManager.jobList.FindIndex(j => j.ID == _ID);
     }
     protected override void OnAfterRender(bool firstRender)
     {
+        //Protected method for first render. 
+        //Starts timer that calls method every second.
+
         if (firstRender)
         {
             BuildJS();
@@ -347,20 +382,18 @@
             // Start the timer.
             time2.Enabled = true;
         }
-        //base.OnAfterRender(firstRender);
     }
     private async void OnTimeInterval(object sender, ElapsedEventArgs e)
     {
-        /*foreach (int ID in JobIDList)
-            {
-            JSFunctiion("GetChecked", ID + "CB");
-        }
-        */
+        //Timer method, runs on time2 interval. 
+        //Updates info on screen.
+
         await InvokeAsync(() => StateHasChanged());
     }
     public void Dispose()
     {
         // While navigating to other components, Dispose method will be called and clean up the Timer function.
+
         time2?.Dispose();
     }
     public async void UpdateList(){
@@ -369,20 +402,25 @@
     }
     private async Task AddorRemoveActiveChecked(int _ID)
     {
-        
+        //Adds or removes Job IDs from batch selected list. 
+        //TODO: HASHMAP
+
         bool CheckValue = await JS.InvokeAsync<bool>("GetCheckboxValue", $"{_ID}");
         string Send = $"{_ID},{CheckValue}";
         await CheckID.InvokeAsync(Send);
     }
     private async Task RemoveActiveChecked(int _ID)
     {
-        //Console.WriteLine("ID: " + _ID);
+        //Removes Job ID from batch selected list. 
+
         await JSFunctiion("ChangeBarColor", _ID + "bar", "false");
         string Send = $"{_ID},false";
         await CheckID.InvokeAsync(Send);
     }
     protected void OpenLogView(renderTask _rT){
-        //LogDisplay = "block";
+
+        //Displays log window with data from a renderTask.
+
         if(LogTask != null){
             DoubleLog = true;
             Thread.Sleep(100);
@@ -391,15 +429,21 @@
         InvokeAsync(() => StateHasChanged());
     }
     protected void CloseLogView(){
-        //LogDisplay = "none";
+
+        //Hides log window.
+
         LogTask = null;
     }
     internal async Task BuildJS()
     {
+        //Builds JS file info. 
+
         JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Pages/DivGUI.razor.js");
     }
     internal async Task JSFunctiion(string _function = "", string arg1 = "", string arg2 = "")
     {
+        //Simplified call for JS function.
+
         if (arg1 != "")//function has first arg
         {
             if (arg2 != "")//function has second args
@@ -416,55 +460,16 @@
             await JS.InvokeVoidAsync(_function);
         }
     }
-    public string GetStatusIcon(int status)
-    {
-        switch (status)
-        {
-            case (0):
-                return "Images/Status/Queueue_whitey.png";//Queued
-            case (1):
-                return "Images/Status/Render_Whitey.png"; //Rendering
-            case (2):
-                return "Images/Status/Finished_Whitey.png"; //Finished
-            case (3):
-                return "Images/Status/Pause_whitey.png"; //Paused
-            case (4):
-                return "Images/Status/Failed_whitey.png";//Failed
-            case (5):
-                return "Images/Status/Cancelled_whitey.png";//Cancelled
-            default:
-                return "Images/Status/Failed_whitey.png";//Failed
-        }
-    }
-    public string GetStatusColor(int status)
-    {
-        switch (status)
-        {
-            case (0):
-                return "#7E469E";
-            case (1):
-                return "#547AB5";
-            case (2):
-                return "#09B18A";
-            case (3):
-                return "#C78753";
-            case (4):
-                return "#C36670";
-            case (5):
-                return "#595959";
-            default:
-                return "#FF0000";
-        }
-    }
     public string GetAppIcon(string _appType)
     {
-        if (_appType.ToLower() == "ae") return @"Images/App/AE.png";
-        else if (_appType.ToLower() == "fusion") return @"Images/App/fusion.png";
-        else if (_appType.ToLower() == "blender") return @"Images/App/blender.png";
-        else return "ERROR";
+        //Returns the path to the correct App icon.
+
+        return apps[_appType.ToLower()];
     }
     public string SimplifyTime(TimeSpan _time)
     {
+        //Simplifes timespan to readable format.
+
         string _return = "";
 
         if (_time == TimeSpan.Zero) return "00:00";
@@ -475,11 +480,15 @@
     }
     public string PauseButtonChange(int _status)
     {
+        //Toggles between pause button and resume button
+
         if (_status == 3) return "Resume";
         else return "Pause";
     }
     public string GetTypeIcon(Job _j)
     {
+        //Switches between video and image sequece icon
+
         if (_j.vid)
         {
             return "Images/Video White.png";
@@ -492,6 +501,8 @@
     }
     private void OpenCloseBlacklist()
     {
+        //Toggles blackList
+
         if (BlackListActive == "none")
         {
             BlackListActive = "block";
@@ -503,14 +514,13 @@
     }
     public void ArchiveJob(int _ID)
     {
+        //Moves job to Archive List
+
         var j = jobManager.jobList.Find(job => job.ID == _ID);
-        //Job JobtoArchive = jobManager.jobList[JobIndex];
         if (!j.finished) WebButtons.CancelJob(_ID);
-        //JobtoArchive.Selected = false;
-        //jobManager.jobArchive.Add(JobtoArchive);
         jobManager.ActiveIDList.Remove(_ID);
         jobManager.ArchiveIDList.Add(_ID);
-        //jobManager.jobList.RemoveAt(JobIndex);
+        
         try
         {
             Database.UpdateDBFile = true;
@@ -522,6 +532,8 @@
     }
     internal async Task JSRemoveFocus(KeyboardEventArgs e, string _ID)
     {
+        //Removes focus from HTML element. 
+
         if (e.Key == "Enter")
         {
             await JS.InvokeVoidAsync("removeFocus", _ID);
@@ -529,47 +541,36 @@
     }
     public double GetProgressBarWidth(double _num)
     {
-        //Console.WriteLine(Convert.ToString((_num * 7) / 10));
+        //Adjusts the width of the progress bar depending on completion.
+
         return (_num * 7) / 10;
     }
     internal async Task SelectPriority(string _ID)
     {
+        //Selects Piriority text on click.
+
         await JS.InvokeVoidAsync("SelectPriorityValue", _ID);
     }
     internal async void OpenPanel(int _ID)
     {
+        //Expands renderTask List.
+
         if (Archive) await JS.InvokeVoidAsync("expandTaskList", _ID, "2");
         else await JS.InvokeVoidAsync("expandTaskList", _ID, "3");
     }
-    public async void MaxamizeTasklist(int _ID, bool colapse) //This has a problem! <------------------------------------------------------------------------------- Currently any task can be maximized, even those that are too small.
+    public async void MaxamizeTasklist(int _ID, bool colapse) 
     {
-        //if (J.renderTasks.Count() < 8) return;
-        /*if (GUIinfo.extend)
-        {
-            if (GUIinfo.TaskArrow == "Images/arrow down.png" && !colapse)
-            {
-                GUIinfo.TaskArrow = "Images/arrow up.png";
-                GUIinfo.TaskListClass = "MaxTaskList";
-                GUIinfo.BlackListClass = "FullList";
-
-            }
-            else
-            {
-                GUIinfo.TaskArrow = "Images/arrow down.png";
-                GUIinfo.TaskListClass = "TaskList";
-                GUIinfo.BlackListClass = "ScrollList";
-
-            }
-            Notes: These three have been changed to be controlled through, JS Thier respective IDs are:
-            J.ID + MaxA
-            J.ID + "TL"
-            J.ID + "BL"
-        }*/
+        //Adjusts renderTask List height.
+        //If 7 tasks or greater are in list then list will grow. Else this cannot be called. 
+    
         if (Archive) await JS.InvokeVoidAsync("maximizeTaskList", _ID, "2");
         else await JS.InvokeVoidAsync("maximizeTaskList", _ID, "3");
     }
     internal async Task JSCheckValue(Job _J)
     {
+        //Checks if entered Priority value is within range.
+        //Returns cheeky message in JS console if silly numbers are called. 
+
         _J.Priority = await JS.InvokeAsync<int>("CheckValue",_J.ID, _J.Priority);
     }
 }

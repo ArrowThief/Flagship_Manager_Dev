@@ -5,6 +5,9 @@
 @using FlagShip_Manager.Helpers
 @using Flagship_Manager_Dev.Components
 @inject IJSRuntime RunJS
+@*
+    Main GUI page for flagship
+*@
 
 <style>
     ::-webkit-scrollbar {
@@ -33,7 +36,6 @@
         background: #595959;
         text-align: center;
         padding: 7px;
-    @* border-radius: 10px 10px 0px 0px;*@
     }
     .headerClass {
 
@@ -84,7 +86,6 @@
         background: #595959;
         text-align: center;
         padding: 7px;
-        <!--border-radius: 10px 10px 0px 0px;-->
     }
     .sort-link {
         cursor: pointer;
@@ -374,18 +375,18 @@
             CurrentWorkerCount = WorkerServer.WorkerList.Count();
             CurrentArchiveCount = jobManager.ArchiveIDList.Count();
             CurrentActiveCount = jobManager.ActiveIDList.Count();
-            //time = new Timer();
-            //Set the time interval.
             time.Interval = 500;
             time.Elapsed += OnTimeInterval;
             time.AutoReset = true;
             // Start the timer.
             time.Enabled = true;
         }
-        //base.OnAfterRender(firstRender);
     }
     private async void OnTimeInterval(object sender, ElapsedEventArgs e)
     {
+        //runs on timer interval. Every .5seconds
+        //Updates UI with new information.
+
         if (wOpen)
         {
             await JSFunctiion("UpdateWorkerList");
@@ -397,14 +398,20 @@
     public void Dispose()
     {
         // While navigating to other components, Dispose method will be called and clean up the Timer function.
+        
         time?.Dispose();
     }
     public async void UpdateAll(){
+
+        //Updates all lists and list heights.
+
         await JSFunctiion("UpdateListHeights");
         await InvokeAsync(() => StateHasChanged());
     }
     public async void ActiveSelectionChange(string _Passed)
     {
+        //Updates list of selected Jobs within Active queue.
+
         string[] Split = _Passed.Split(",");
         int ID = int.Parse(Split[0]);
         bool Checked = bool.Parse(Split[1]);
@@ -451,8 +458,11 @@
         }
         listSort(false);
     }
+
     public async void ArchiveSelectionChange(string _Passed)
     {
+        //Updates list of selected Jobs within Archive queue.
+
         string[] Split = _Passed.Split(",");
         int ID = int.Parse(Split[0]);
         bool Checked = bool.Parse(Split[1]);
@@ -496,6 +506,8 @@
     }
     internal async Task JSFunctiion(string _function = "", string arg1 = "", string arg2 = "")
     {
+        //Simplified JS call.
+
         try
         {
             if (arg1 != "")//function has first arg
@@ -526,6 +538,8 @@
     }
     internal async Task BuildJS()
     {
+        //Builds JS object. 
+
         try {
             JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Pages/DivGUI.razor.js");
         }
@@ -536,6 +550,8 @@
     }
     internal async Task SelectAllJobs(ChangeEventArgs eve, string UI_ID, bool _Archive = false)
     {
+        //Selects or deslects all jobs in list.
+
         int[] temp;
         if (_Archive) temp = jobManager.ArchiveIDList.ToArray();
         else temp = jobManager.ActiveIDList.ToArray();
@@ -555,8 +571,6 @@
 
         foreach(int jid in temp)
         {
-            //Job SelectedJob = jobManager.jobList.Find(J => J.ID == jid);
-            //SelectedJob.selected = selected;
             if (selected)
             {
                 JSFunctiion("ChangeBarColor", jid + "bar", "true");
@@ -578,6 +592,8 @@
     }
     internal async Task RunBatchAction(int _Action, bool _Archive = false)
     {
+        //Runs batch action on all select jobs
+
         if (_Archive)
         {
             WebButtons.RunAction(_Action, ArchiveSelection.ToArray());
@@ -589,13 +605,11 @@
 
         foreach (int jid in jobManager.ArchiveIDList)
         {
-            //await JSFunctiion("SetCheckValue", "2cb", "false");
             await JSFunctiion("SetCheckValue", jid + "CB", "false");
             await JSFunctiion("ChangeBarColor", jid + "bar", "false");
         }
         foreach (int jid in jobManager.ActiveIDList)
         {
-            //await JSFunctiion("SetCheckValue", "3cb", "false");
             await JSFunctiion("SetCheckValue", jid + "CB", "false");
             await JSFunctiion("ChangeBarColor", jid + "bar", "false");
         }
@@ -616,6 +630,8 @@
     }
     internal async Task OpenCloseList(string _ListID, int[]? _JobList = null)
     {
+        //Toggles lists open or closed.
+
         string temp = "";
         string[] At = temp.Split(",");
         try
@@ -646,6 +662,9 @@
     }
     internal void listSort(bool Archive, int Index = -1)
     {
+        //Sorts lists
+        //TODO: Try rewriting this to be faster.
+
         if (Index != -1) SortIndex = Index;
         else Index = SortIndex;
         switch (Index)

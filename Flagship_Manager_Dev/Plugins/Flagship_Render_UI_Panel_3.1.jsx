@@ -19,53 +19,64 @@
     var tempOutput = "";
 }
 //Settings File management.
-{
-    function LoadSettingsFile() {
-        var settingsFile = new File(defaultSettingsFilePath);
 
-        if (settingsFile.exists) {
-            //If settings file exists then settings will be loaded.
-            settingsFile.encoding = 'UTF8';
-            settingsFile.read()
-            settingsFile.open("r");
+function LoadSettingsFile() {
 
-            var string = settingsFile.read();
-            var json = JSON.parse(string);
-            WorkorderPath = json.ctlFolder;
-            tempProjectPathString = json.TempProjectPath;
-            tempOutput = json.TempOutputPath;
+    //Loads Settings file from user documents folder.
 
-        } else {
-            //If settings file doesn't exist, default values will be used.
-            tempProjectPathString = defaultProjectPath;
-            WorkorderPath = defaultWorkOrderPath;
-        }
+    var settingsFile = new File(defaultSettingsFilePath);
 
+    if (settingsFile.exists) {
+
+        //If settings file exists then settings will be loaded.
+
+        settingsFile.encoding = 'UTF8';
+        settingsFile.read()
+        settingsFile.open("r");
+
+        var string = settingsFile.read();
+        var json = JSON.parse(string);
+        WorkorderPath = json.ctlFolder;
+        tempProjectPathString = json.TempProjectPath;
+        tempOutput = json.TempOutputPath;
+
+    } else {
+
+        //If settings file doesn't exist, default values will be used.
+
+        tempProjectPathString = defaultProjectPath;
+        WorkorderPath = defaultWorkOrderPath;
     }
 
-    function saveSettingsFile() {
-        var SettingsObject =
-        {
-            "ctlFolder": WorkorderPath,
-            "TempProjectPath": tempProjectPathString,
-            "TempOutputPath": tempOutput
-        }
-        var exportFile = new File(encodeURI(defaultSettingsFilePath));
-        if (canWriteFiles(exportFile)) {
-            try {
-                writeFile(exportFile, SettingsObject);
-            }
-            catch (err) {
-                alert("Failed to write file after passing \"CanWriteFiles\" Check \n" + err)
-            }
-        }
-        else alert("Can't write file")
-    }
 }
+
+function saveSettingsFile() {
+
+    //Creates a settings file in user documents dir.
+    //This file can be used by all Flagship applications.
+
+    var SettingsObject =
+    {
+        "ctlFolder": WorkorderPath,
+        "TempProjectPath": tempProjectPathString,
+        "TempOutputPath": tempOutput
+    }
+    var exportFile = new File(encodeURI(defaultSettingsFilePath));
+    if (canWriteFiles(exportFile)) {
+        try {
+            writeFile(exportFile, SettingsObject);
+        }
+        catch (err) {
+            alert("Failed to write file after passing \"CanWriteFiles\" Check \n" + err)
+        }
+    }
+    else alert("Can't write file")
+}
+
 LoadSettingsFile()
-//Settings window
 {
     //Settings window
+
     var settingsWindow = new Window("palette", "Settings", undefined);
 
     var PathGroup = settingsWindow.add("group")
@@ -75,7 +86,6 @@ LoadSettingsFile()
 
 
     var buttonsGroup = settingsWindow.add("group")
-    //textButtons.orentation = "column";
     var TextcloseButton = buttonsGroup.add("button", undefined, "Save");
     var TextdefaultButton = buttonsGroup.add("button", undefined, "Defaults");
 
@@ -85,223 +95,218 @@ LoadSettingsFile()
 }
 
 
-//Reserved
-{
-
-}
-
 //Submit Functions
-{
-    function SubmitRender(workOrderFilePath, projectFilePath, GPU, OW, priority, split) {
-        //var bigbreak = false;
-        //var video = false;
-        var renderItems = app.project.renderQueue.numItems;
-        var TotalRendersSubmitted = 0;
-        var RenderObjects = [];
-        var outputType = "Custom";
-        var WorkingProjectPath = app.project.file.fsName;
 
+function SubmitRender(workOrderFilePath, projectFilePath, GPU, OW, priority, split) {
 
+    //Builds JSON object with project info,
+    //Creates a temp copy of the project in temp projects folder
+    //Attempts to save workorder to CtlFolder.
 
-        //var currentFile = new File;
-        for (var i = 1; i <= renderItems; i++) {
-            try {
-                outputType = app.project.renderQueue.item(i).outputModule(1).name
-            }
-            catch (err) {
-                outputType = "Custom";
-            }
-            if (app.project.renderQueue.item(i).render == true) {
-                var frameRate = 1 / app.project.renderQueue.item(i).comp.frameDuration;
-                //var test = app.project.renderQueue.item(i).outputModule(1).file ;
-                var renderObject =
-                {
-                    "Project": projectFilePath,
-                    "WorkingProject": WorkingProjectPath,
-                    "Name": app.project.renderQueue.item(i).comp.name,
-                    "extinfo": app.project.file.path,
-                    "outputType": outputType,
-                    "Filepath": app.project.renderQueue.item(i).outputModule(1).file.fsName,
-                    "StartFrame": app.project.renderQueue.item(i).comp.displayStartTime * frameRate + app.project.renderQueue.item(i).comp.workAreaStart * frameRate,
-                    "FrameRange": 1 / app.project.renderQueue.item(i).comp.frameDuration * app.project.renderQueue.item(i).comp.workAreaDuration,
-                    "GPU": GPU,
-                    "OW": OW,
-                    "vid": VIDorImage(app.project.renderQueue.item(i).outputModule(1).file.toString()),
-                    "RenderApp": "AE",
-                    "Priority": priority,
-                    "split": split,
-                    "MaxRenderTime": 30,
-                    "QueueIndex": i
-                }
-                //alert("render object = " + renderObject);
-                RenderObjects.push(renderObject);
-                app.project.renderQueue.item(i).render = false
-                TotalRendersSubmitted = TotalRendersSubmitted + 1;
-            }
-        }
+    var renderItems = app.project.renderQueue.numItems;
+    var TotalRendersSubmitted = 0;
+    var RenderObjects = [];
+    var outputType = "Custom";
+    var WorkingProjectPath = app.project.file.fsName;
 
-        if (TotalRendersSubmitted > 0) {
-            //while (app.project.renderQueue.numItems > 0) {
-            //    app.project.renderQueue.item(app.project.renderQueue.numItems).remove();
-            //}
-            app.project.save(File(projectFilePath));
-            saveWorkOrder(workOrderFilePath, RenderObjects);
-        }
-        else alert("Nothing queued to render.");
-    }
-    function VIDorImage(Filepath) {
-        var patt = "[a-zA-Z+0-9]+$";
-        var vid = ["mov", "mp4", "avi", "r3d", "mp3", "wav"];
-        var fileType = Filepath.substring(Filepath.search(patt));
-        for (i = 0; i <= vid.length; i++) {
-            if (vid[i] == fileType) {
-                return true;
-
-            }
-        }
-        return false;
-    }
-    function saveWorkOrder(filepath, content) {
-        var num = 1;
-        var fileName = "WorkOrder";
-        var baseName = "WorkOrder";
-        var scriptFolderPath = filepath + fileName;
-        var runWhile = true;
-
-        while (runWhile) {//Check for existing file and increse the number depending on how many work orders exist currently.
-            var scriptFolderPath = filepath + fileName;
-            var F = new File(scriptFolderPath + ".txt");
-            if (F.exists) {
-                fileName = baseName + num;
-                num++;
-            } else runWhile = false;
-        }
-        var exportFile = new File(encodeURI(scriptFolderPath + ".txt"));
-
-        if (canWriteFiles(exportFile)) {
-            try {
-                writeFile(exportFile, content);
-            }
-            catch (err) {
-                alert("Failed to write file after passing \"CanWriteFiles\" Check \n" + err)
-            }
-        }
-        else alert("Can't write file")
-    }
-    function writeFile(fileObj, content, encoding) {
-        content = (JSON.stringify(content));
-        //cleanContent = content.substring(1,content.length-1);
-        encoding = encoding || "utf-8";
-
-        fileObj = (fileObj instanceof File) ? fileObj : new File(fileObj);
-
-        var parentFolder = fileObj.parent;
-
-        if (!parentFolder.exists && !parentFolder.create()) {
-            alert("Cannot create file in path " + fileObj.fsName);
-            throw new Error("Cannot create file in path " + fileObj.fsName);
-        }
-
-        fileObj.encoding = encoding;
-
-        fileObj.open("w");
-
-        fileObj.write(content);
-
-        fileObj.close();
-
-        return fileObj;
-    }
-    function canWriteFiles() {
-
-        if (isSecurityPrefSet()) return true;
-
-        alert(script.name + " requires access to write files.\n" +
-
-            "Go to the \"General\" panel of the application preferences and make sure " +
-
-            "\"Allow Scripts to Write Files and Access Network\" is checked.");
-
-        app.executeCommand(2359);//Open General Preferances
-
-        return isSecurityPrefSet();
-
-        function isSecurityPrefSet() {
-
-            return app.preferences.getPrefAsLong(
-
-                "Main Pref Section",
-
-                "Pref_SCRIPTING_FILE_NETWORK_SECURITY"
-
-            ) === 1;
-
-        }
-
-    }
-    function readFile(filepath) {
-        var testtextfile = File(filepath);
-
-        testtextfile.encoding = 'UTF8'; // set to 'UTF8' or 'UTF-8'
-
-        testtextfile.open("r");
-
-        var fileContentsString = testtextfile.read();
-
-        testtextfile.close();
-        alert(fileContentsString)
-        return fileContentsString;
-    }
-    function getProjectpath() {
-        //alert("get project path")   
+    for (var i = 1; i <= renderItems; i++) {
         try {
-            var fileLocation = app.project.file.fsName; //-file.fsName gives the full file path vs just -file which gives a shortened path.
-            //alert("File location: "+fileLocation)
-            return fileLocation;
+            outputType = app.project.renderQueue.item(i).outputModule(1).name
         }
         catch (err) {
-            alert("File not saved \n" + err)
+            outputType = "Custom";
         }
-    }
-    function checkPriorityNum(Num) {
-        var _num = parseInt(Num, 10);
-        if (!isNaN(_num)) {
-
-            if (_num > 100) return 100;
-            else if (_num < 0) return 0;
-            else return _num;
-        }
-        else return 50;
-    }
-    function checkSplitNum(Num) {
-        try {
-            var _num = parseInt(Num, 10);
-            if (isNaN(_num)) {
-                alert("Split is not a num: " + Num)
-                return 0;
-            } else {
-                //alert("Split is a num: " + _num)
-                return _num;
+        if (app.project.renderQueue.item(i).render == true) {
+            var frameRate = 1 / app.project.renderQueue.item(i).comp.frameDuration;
+            var renderObject =
+            {
+                "Project": projectFilePath,
+                "WorkingProject": WorkingProjectPath,
+                "Name": app.project.renderQueue.item(i).comp.name,
+                "extinfo": app.project.file.path,
+                "outputType": outputType,
+                "Filepath": app.project.renderQueue.item(i).outputModule(1).file.fsName,
+                "StartFrame": app.project.renderQueue.item(i).comp.displayStartTime * frameRate + app.project.renderQueue.item(i).comp.workAreaStart * frameRate,
+                "FrameRange": 1 / app.project.renderQueue.item(i).comp.frameDuration * app.project.renderQueue.item(i).comp.workAreaDuration,
+                "GPU": GPU,
+                "OW": OW,
+                "vid": VIDorImage(app.project.renderQueue.item(i).outputModule(1).file.toString()),
+                "RenderApp": "AE",
+                "Priority": priority,
+                "split": split,
+                "MaxRenderTime": 30,
+                "QueueIndex": i
             }
+            RenderObjects.push(renderObject);
+            app.project.renderQueue.item(i).render = false
+            TotalRendersSubmitted = TotalRendersSubmitted + 1;
         }
-        catch (err) {
-            alert("error on split number, setting default value.")
-            return 0;
-        }
-
     }
 
-    //End Submit Functions
+    if (TotalRendersSubmitted > 0) {
+        app.project.save(File(projectFilePath));
+        saveWorkOrder(workOrderFilePath, RenderObjects);
+    }
+    else alert("Nothing queued to render.");
 }
+function VIDorImage(Filepath) {
+
+    //Returns true if output file is a single video file,
+    //Returns false if output files are single frames 
+
+    var patt = "[a-zA-Z+0-9]+$";
+    var vid = ["mov", "mp4", "avi", "r3d", "mp3", "wav"];
+    var fileType = Filepath.substring(Filepath.search(patt));
+    for (i = 0; i <= vid.length; i++) {
+        if (vid[i] == fileType) {
+            return true;
+
+        }
+    }
+    return false;
+}
+function saveWorkOrder(filepath, content) {
+
+    //Checks for filename conflicts, increments filename if needed and writes workoder to output path.
+
+    var num = 1;
+    var fileName = "WorkOrder";
+    var baseName = "WorkOrder";
+    var scriptFolderPath = filepath + fileName;
+    var runWhile = true;
+
+    while (runWhile)
+    {
+
+        //Check for existing file and increse the number depending on how many work orders exist currently.
+
+        var scriptFolderPath = filepath + fileName;
+        var F = new File(scriptFolderPath + ".txt");
+        if (F.exists) {
+            fileName = baseName + num;
+            num++;
+        } else runWhile = false;
+    }
+    var exportFile = new File(encodeURI(scriptFolderPath + ".txt"));
+
+    if (canWriteFiles(exportFile)) {
+        try {
+            writeFile(exportFile, content);
+        }
+        catch (err) {
+            alert("Failed to write file after passing \"CanWriteFiles\" Check \n" + err)
+        }
+    }
+    else alert("Can't write file")
+}
+function writeFile(fileObj, content, encoding)
+{
+    //Writes workerObject as a JSON string.
+
+    content = (JSON.stringify(content));
+    encoding = encoding || "utf-8";
+
+    fileObj = (fileObj instanceof File) ? fileObj : new File(fileObj);
+
+    var parentFolder = fileObj.parent;
+
+    if (!parentFolder.exists && !parentFolder.create()) {
+        alert("Cannot create file in path " + fileObj.fsName);
+        throw new Error("Cannot create file in path " + fileObj.fsName);
+    }
+
+    fileObj.encoding = encoding;
+
+    fileObj.open("w");
+
+    fileObj.write(content);
+
+    fileObj.close();
+
+    return fileObj;
+}
+
+function canWriteFiles() {
+    //Checks if output can write to location.
+
+    if (isSecurityPrefSet()) return true;
+
+    alert(script.name + " requires access to write files.\n" +
+
+        "Go to the \"General\" panel of the application preferences and make sure " +
+
+        "\"Allow Scripts to Write Files and Access Network\" is checked.");
+
+    app.executeCommand(2359);//Open General Preferances
+
+    return isSecurityPrefSet();
+}
+function isSecurityPrefSet()
+{
+
+    //Checks prefrences to make sure settings are correctly setup.
+
+    if (app.preferences.getPrefAsLong(
+
+        "Main Pref Section",
+
+        "Pref_SCRIPTING_FILE_NETWORK_SECURITY"
+
+    ) === 1) {
+        return true;
+    }
+    else return false;
+
+}
+
+function checkPriorityNum(Num) {
+
+    //Checks priority for valid value.
+
+    var _num = parseInt(Num, 10);
+    if (!isNaN(_num)) {
+
+        if (_num > 100) return 100;
+        else if (_num < 0) return 0;
+        else return _num;
+    }
+    else return 50;
+}
+
+function checkSplitNum(Num) {
+    //Checks split for valid value.
+
+    try {
+        var _num = parseInt(Num, 10);
+        if (isNaN(_num)) {
+            alert("Split is not a num: " + Num)
+            return 0;
+        } else {
+            return _num;
+        }
+    }
+    catch (err) {
+        alert("error on split number, setting default value.")
+        return 0;
+    }
+
+}
+
+//End Submit Functions
+
 //Main UI Panel
 {
     function myScript(thisObj) {
         function myScript_buildUI(thisObj) {
+
+            //UIPanel for Flagship
+
             var myPanel = (thisObj instanceof Panel) ? thisObj : new Window("palette", "Revisions", undefined, { resizeable: false, closeButton: true });
 
             //Submit Button
             var Row1 = myPanel.add("group", undefined, "Row1");
             var SubmitButton = Row1.add("button", undefined, "Submit Render Job")
+
             //Settings
             var setPanel = myPanel.add("TabbedPanel", undefined, "Settings");
             var GPUcheckbox = setPanel.add("checkbox", undefined, "GPU");
@@ -310,10 +315,11 @@ LoadSettingsFile()
             OWcheckbox.value = true
             var PriorityWindow = setPanel.add("edittext", undefined, "Priority");
             var workerSplit = setPanel.add("edittext", undefined, "Worker Split");
+
             //Advanced settings
             var Row3 = myPanel.add("group", undefined, "Row3");
             var FileButton = Row3.add("button", undefined, "Path Settings")
-            //var closeButton = Row3.add("button", undefined,"Close");
+
 
             //Help tips
             {
@@ -339,24 +345,19 @@ LoadSettingsFile()
                         OW = true;
                     }
                     else OW = false;
-                    //alert("Workersplit value = " + workerSplit.value);
                     if (workerSplit.text == "Worker Split") {
                         split = 0;
                     }
                     else split = checkSplitNum(workerSplit.text);
-                    //alert("split = " + split);
                     if (PriorityWindow.text == "Priority") {
                         priority = 50;
                     }
                     else priority = checkPriorityNum(PriorityWindow.text);
-                    //alert(localProjectPath);
-                    //alert(fileName);
                     fileName = Math.round(generateRandomNumber() * 1000000).toString() + ".aep";
                     SubmitRender(WorkorderPath, (tempProjectPathString + fileName), GPU, OW, priority, split);
                 }
 
                 FileButton.onClick = function () {
-                    //settingsWindow.orentation = "row";
                     settingsWindow.show();
                 }
 
@@ -423,9 +424,6 @@ LoadSettingsFile()
                     if (workerSplit.text == "Worker Split") {
                         this.justify = "center";
                         this.text = "0";
-                        //PriorityWindow.
-
-
                     }
                 })
                 workerSplit.addEventListener("mouseout", function () {

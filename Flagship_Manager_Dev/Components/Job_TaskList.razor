@@ -1,5 +1,13 @@
 ﻿@using FlagShip_Manager.Objects
 @using FlagShip_Manager.Helpers
+@*
+    Scrollable renderTask List. 
+    Can be expanded to show all render tasks.
+    Shows task Index, frame numbers, length, render time, active workers and status.
+    TODO: Add previous worker display, maybe a dropdown on workers? 
+
+*@
+
 <style>
     .TaskList {
         width: 1050px;
@@ -79,7 +87,7 @@
             @if (t.Attempt(false) < 1)//Task has 0 attempts
             {
                 <div class="taskCell" style="width: 40px;"><label class="CellLabel">@Count</label></div>
-                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@GetStatusMessage(t.Status)</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@statusMessage[t.Status]</label></div>
                 <div class="taskCell" style="width: 180px;"><label class="CellLabel">---</label></div>
                 <div class="taskCell" style="width: 160px;"><label class="CellLabel">@t.FirstFrame-@t.finalFrame</label></div>
                 <div class="taskCell" style="width: 130px;"><label class="CellLabel">---</label></div>
@@ -95,7 +103,7 @@
             else//Task has at least one attempt.
             {
                 <div class="taskCell" style="width: 40px;"><label class="CellLabel">@Count</label></div>
-                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@GetStatusMessage(t.Status)</label></div>
+                <div class="taskCell" style="width: 100px;"><label class="CellLabel">@statusMessage[t.Status]</label></div>
                 <div class="taskCell" style="width: 180px;"><label class="CellLabel">@t.taskLogs.CurrentWorker()</label></div>
                 <div class="taskCell" style="width: 160px;"><label class="CellLabel">@t.FirstFrame-@t.finalFrame</label></div>
 
@@ -129,24 +137,6 @@
 @code {
     [Parameter]
     public int Count { get; set; } = 1;
-    //[Parameter]
-    //public bool Archive { get; set; } = false;
-    //[Parameter]
-    //public string[] Status { get; set; } = new string[0];
-    //[Parameter]
-    //public string[] Workers { get; set; } = new string[0];
-    //[Parameter]
-    //public int[] FirstFrames { get; set; } = new int[0];
-    //[Parameter]
-    //public int[] FinalFrames { get; set; } = new int[0];
-    //[Parameter]
-    //public DateTime[] StartTimes { get; set; } = new DateTime[0];
-    //[Parameter]
-    //public DateTime[] FinishTimes { get; set; } = new DateTime[0];
-    //[Parameter]
-    //public int[] Attempt { get; set; } = new int[0];
-    //[Parameter]
-    //public int[] Progress { get; set; } = new int[0];
     [Parameter]
     public int JID { get; set; } = 0;
     [Parameter]
@@ -158,39 +148,28 @@
     [Parameter]
     public EventCallback UpdateJob { get; set; }
 
-
-    public string GetStatusMessage(int status)
+    Dictionary<int, string> statusMessage = new Dictionary<int, string>()
     {
-        switch (status)
-        {
-            case (0):
-                return "Queued";
-            case (1):
-                return "Rendering";
-            case (2):
-                return "Done";
-            case (3):
-                return "Paused";
-            case (4):
-                return "Failed";
-            case (5):
-                return "Canceled";
-            default:
-                return "ERROR";
-        }
-    }
+        {0,"Queued" },
+        {1, "Rendering" },
+        {2,"Done" },
+        {3, "Paused" },
+        {4,"Failed" },
+        {5, "Canceld" }
+    };
+
     public string simplifyRenderTime(DateTime? _time, DateTime? JobStartTime)
     {
-        //return "Broken";
+        //Simplifies render time to make it more user readable.
+
         if(_time == null || JobStartTime == null)return "---";
         if (_time == JobStartTime || _time == new DateTime()) return "---";
         else return _time.ToString();
     }
     public async Task OpenLogView(renderTask _rT)
     {
-        //DivJobUI.RenderLogs = _Log;
+        //Returns a call for log view to open in parent componenet, passes renderTasks.
+
         await LogViewCall.InvokeAsync(_rT);
-        //DivJobUI.LogDisplay = "block";
-        //StateHasChanged();
     }
 }

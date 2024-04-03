@@ -2,6 +2,9 @@
 @using System.Timers
 @using Flagship_Manager_Dev.Objects;
 @implements IDisposable
+@*
+    Displays log data from passed renderTask.
+*@
 
 @page "/LogView"
 <style>
@@ -50,25 +53,15 @@
 <div class="TextBox">
     <div id="TitleBar">
         <label style="display:table-cell;">Log View</label>
-        @*<input type="number" class="Index" @bind-value="CurrentIndex" @onkeydown="@Enter">*@
-        
         @for (int Count = 1; Count < 10; Count++)
         {
-            
-            int current = Count;
-            
-                @if (current > _TaskLogs.Attempt(false))
-                {
-                @*<div style="display:table-cell; width:50px; height:5px; color:green;"></div>*@
-                }
-                else{
-                    <div style="display:table-cell; width:5px;"></div>
-                    <button type="button" class="Index" @onclick="() => ChangeLog(current-1)">@current</button>
-
-                }
+            @if (Count <= _TaskLogs.Attempt(false))
+            {
+                <div style="display:table-cell; width:5px;"></div>
+                <button type="button" class="Index" @onclick="() => ChangeLog(Count-1)">@Count</button>
+            }
             
         }
-        @*<div style="display:table-cell; width:69.65%;"></div>*@
         <button class="SwapButton" @onclick="() => SwapLogs()">@LogString</button>
         <button class="CloseButton" @onclick="() => Close()">X</button>
     </div>
@@ -97,81 +90,58 @@
     
 </div>
 @code {
-    private int numValue = 0;
-    private int currentCount = 0;
-    private Timer? time;
-    private int CurrentIndex = -1;
-    private bool LogSwap = true;
-    private string LogString = "Worker Log   ";
-    //private bool open = true;
-    //private bool deslect = false;
-    //InputNumber<int> inputTest;
-    //[Parameter]
-    //public renderTask? LogTask { get; set; } = new renderTask();
-
-    //[Parameter]
-    // EventCallback<bool> CloseBool { get; set; }
-    //[Parameter]
-    //public List<string> WorkerLogs { get; set; }
-    //[Parameter]
-    //public List<string> MangerLogs { get; set; }
-    //[Parameter]
-    //public bool open { get; set; }
-    //[Parameter]
-    //public int TaskAttempts { get; set; } = 0;
     [Parameter]
     public TaskLogs _TaskLogs {get; set;}
     [Parameter]
     public EventCallback CloseWindow { get; set; }
-    public void Enter(KeyboardEventArgs e)
-    {
-        if (e.Code == "Enter" || e.Code == "NumpadEnter")
-        {
 
-        }
-    }
+    private bool LogSwap = true;
 
-    //private string DefaultLogState()
-    //{
-    //    if (Logs[LogTask.attempt] == "") return "No log data.";
-    //    else return LogTask.Log[LogTask.attempt];
-    //}
+    private int numValue = 0;
+    private int currentCount = 0;
+    private int CurrentIndex = -1;
+
+    private string LogString = "Worker Log   ";
+
+    private Timer? time;
+    
     private async Task Close(){
 
         await CloseWindow.InvokeAsync();
-        //DivJobUI.LogDisplay = "none";
-        //return CloseBool.InvokeAsync(false);
-    }
-    private void IncrementCount(){
-        currentCount++;
-    }
-    protected override void OnAfterRender(bool firstRender){
+     }
+    protected override void OnAfterRender(bool firstRender)
+    {
+        
+        //Protected after render method.
+        //Starts timer that calls onTimeInterval every second.
+
         if (firstRender)
         {
-            //CurrentIndex = WorkerLogs.Count() -1;
             InvokeAsync(() => StateHasChanged());
             time = new Timer();
-            //Set the time interval.
             time.Interval = 1000;
             time.Elapsed += OnTimeInterval;
             time.AutoReset = true;
-            // Start the timer.
             time.Enabled = true;
         }
-
-
         base.OnAfterRender(firstRender);
     }
-    private async void OnTimeInterval(object sender, ElapsedEventArgs e){
-        IncrementCount();
+    private async void OnTimeInterval(object sender, ElapsedEventArgs e)
+    {
+        
+        //refreshes data on screen.
+        
         await InvokeAsync(() => StateHasChanged());
     }
     public void Dispose(){
+        
         // While navigating to other components, Dispose method will be called and clean up the Timer function.
+    
         time?.Dispose();
     }
     public void ApplyNumber()
     {
+        //Checks to make sure currentIndex is valid after ChangeLog is called.
 
         if (CurrentIndex > _TaskLogs.Attempt() || CurrentIndex < 0)
         {
@@ -182,10 +152,17 @@
             CurrentIndex = numValue;
         }
     }
-    public void ChangeLog(int _Index){
+    public void ChangeLog(int _Index)
+    {
+
+        //Swithces which Log is currently being viewed.
+
         CurrentIndex = _Index;
     }
-    public void SwapLogs() {
+    public void SwapLogs() 
+    {
+        //Switches to another renderTasks Logs.
+
         LogSwap = !LogSwap;
         if (LogSwap) LogString = "Worker Log   ";
         else LogString = "Manager Log";

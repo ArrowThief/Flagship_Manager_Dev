@@ -4,6 +4,11 @@
 @using System.Timers
 @inject IJSRuntime RunJS
 
+@*
+    Component for listing workers. 
+    UI allows for shutting down, sleeping, and enabling or disabling specific render applications on a given worker.
+*@
+
 <style>
     .WorkerButtons {
         background: #595959;
@@ -100,33 +105,51 @@
     }
 
 </style>
+
 <div id="jl1">
-@foreach(WorkerObject W in WorkerServer.WorkerList){
-    var labelID = W.WorkerID + "l";
-    var IDdouble = W.WorkerID + "b";
-    var statusID = W.WorkerID + "s";
-    RenderApp? Default = W.AvailableApps.Find(a => a.Default == true);
+
+    @foreach(WorkerObject W in WorkerServer.WorkerList){
+        var labelID = W.WorkerID + "l";
+        var IDdouble = W.WorkerID + "b";
+        var statusID = W.WorkerID + "s";
+        RenderApp? Default = W.AvailableApps.Find(a => a.Default == true);
     
         <div style="background: #424242; width: 100%; height:32px; clear: both; z-index:0">
+
             <div id="@IDdouble" class="WI_cell" style=" width:150px; z-index:10;">
                 <div id="@W.WorkerID" class="ExpandingName" @onmouseover='() => JSFunctiion(W.WorkerID, "ShowExtendedName")'  @onmouseout='() => JSFunctiion(W.WorkerID, "HideExtendedName")'>
-                    <label id='@labelID' class="LabelDrop" style="z-index:510">@W.name</label><!--Worker Name-->
+                    
+                    <!--Worker Name-->
+
+                    <label id='@labelID' class="LabelDrop" style="z-index:510">@W.name</label>
                 </div> 
             </div>
-            <div id="@statusID" class="WI_cell" style="width:100px; z-index:1;"><label class="LabelDrop" style="z-index:1;">@StatusDecode(W.Status)</label></div><!--Status-->
+            
+            <div id="@statusID" class="WI_cell" style="width:100px; z-index:1;">
+
+                <!--Status-->
+
+                <label class="LabelDrop" style="z-index:1;">@WorkerStatus[W.Status]</label>
+            </div>
+
             <div class="WI_cell" style="width:45px">
                 @if (Default != null)
                 {
+                    <!--Master render type-->
+
                     <img class="AppIconStatic" src="@Default.ImagePath" />
                 }
-            </div><!--Master render type-->
+            </div>
+
             <div class="WI_cell" style="width:105px">
                 <div style="position:relative; "></div>
-                <!--Apps this worker is able to render with.-->      
+
                 <div style="width:5px;"></div>
             
                 @foreach (RenderApp app in W.AvailableApps)
                 {
+                    <!--Apps this worker is able to render with.-->
+
                     <div style="position:relative; float:left; width:33px; height:32px;">
                         @if (W.Status == 7)
                         {
@@ -136,12 +159,20 @@
                             <img class="AppIconAnimate" @onclick="() => app.EnableDisable()" src="@app.ImagePath" />
                         }
                     </div>
-                }
-            
-                                                                     
+                }                                                                     
             </div>
-            <div class="WI_cell" style="width:50px"><img class="GPUIconStatic" style="opacity:45%" src="@GetGPUStatusIcon(W.GPU)"/></div><!--GPU Info-->
+
+            <div class="WI_cell" style="width:50px">
+
+                <!--GPU Info-->
+
+                <img class="GPUIconStatic" style="opacity:45%" src="@GetGPUStatusIcon(W.GPU)"/>
+            </div>
+
             <div class="WI_cell" style="width:140px">
+                
+                <!--Control buttons-->
+                
                 @if (W.Status != 7){
                     <button class="WorkerButtons" @onclick="() => W.KillWorker()">Kill</button>
                     @if(W.Status != 3 )
@@ -153,15 +184,27 @@
                         <button class="WorkerButtons" @onclick="() => W.SleepWorker()">Wake</button>
                     }   
                 }
-            </div><!--Control buttons-->
-        
-            <div class="WI_cell" style="width:120px"><label class="LabelDrop">@SimplifedTime(W.lastSeen)</label></div> <!--Time since worker last updated-->
+            </div>
+            
+            <div class="WI_cell" style="width:120px">
 
-            <div class="WI_cell" style="width:834px; text-align:left; padding-left:2px;border-right:hidden;"><label class="LabelDrop">@W.ConsoleBuffer</label></div><!--Latest Log data-->
+                <!--Time since worker last updated-->
 
+                <label class="LabelDrop">@SimplifedTime(W.lastSeen)</label>
+            </div> 
+
+            <div class="WI_cell" style="width:834px; text-align:left; padding-left:2px;border-right:hidden;">
+
+                <!--Latest Log data-->
+
+                <label class="LabelDrop">@W.ConsoleBuffer</label>
+            </div>
+    
         </div>
-        <!--<div style="width:1520px; height:4px;"></div>-->
     }
+    
+    <!--Extra padding line at bottom-->
+    
     <div style="width:1520px; height:4px;"></div>
 </div>
     
@@ -174,8 +217,24 @@
 
     private Timer? time;
 
+    Dictionary<int, string> WorkerStatus = new Dictionary<int, string>()
+    {
+        {0,"Idle" },
+        {1,"Rendering" },
+        {2, "Finished" },
+        {3, "Asleep" },
+        {4, "Failed" },
+        {5, "Canceld" },
+        {6, "Starting Up" },
+        {7, "Offline" },
+        {8, "Passive" }
+    };
+
     protected override void OnAfterRender(bool firstRender)
     {
+        //Protected after render method. 
+        //starts timer on first render that calls OnTImeInterval
+
         if (firstRender)
         {
             time = new Timer();
@@ -186,62 +245,29 @@
             // Start the timer.
             time.Enabled = true;
         }
-        //base.OnAfterRender(firstRender);
     }
     private async void OnTimeInterval(object sender, ElapsedEventArgs e)
     {
+        //called on timer, every .2seconds.
+
         await InvokeAsync(() => StateHasChanged());
     }
-    public string StatusDecode(int _s)
-    {
-        //Client status. ready for work(0), rendering(1), complete(2), Paused/asleep(3), failed(4), canceled(5) starting up(6), offline(7), passive(8) asleep(9).
-        switch(_s){
-            case 0:
-                return "Idle";
-            case 1:
-                return "Rendering";
-            case 2:
-                return "Finished";
-            case 3:
-                return "Asleep";
-            case 4:
-                return "Failed";
-            case 5:
-                return "Canceled";
-            case 6:
-                return "Starting up";
-            case 7:
-                return "Offline";
-            case 8:
-                return "Passive";
-            default: 
-                return "ERROR";
-        }
 
-    }
-    public string GetRenderAppfromNum(int Num){
-        switch (Num)
-        {
-            case 1:
-                return "AE";
-            case 2:
-                return "blender";
-            case 3:
-                return "fusion";
-            default:
-                return "ERROR";
-        }
-    }
-    public string GetGPUStatusIcon(bool _GPU){
+    public string GetGPUStatusIcon(bool _GPU)
+    {
+    
+        //Returns path to icon depending on if a worker is equiped with a >4GB GPU.
+        
         if(_GPU){
             return @"Images\Status\Finished_whitey.png";
-        }else{
-            return @"Images\Status\Failed_whitey.png";
         }
-
+        return @"Images\Status\Failed_whitey.png";
+        
     }
     public string SimplifedTime(DateTime _lastSeen)
     {
+        //Simplifies last seen time for better user readablility.
+
         if (_lastSeen.AddDays(1) < DateTime.Now)
         {
             return _lastSeen.ToString(@"MM/dd");
@@ -262,6 +288,8 @@
     }
     internal string AdjustNameLength(string _Name)
     {
+        //Adjusts worker name to fit within space constraints. 
+
         if (_Name.Length > 10)
         {
             return _Name.Substring(0, 10);
@@ -270,6 +298,8 @@
     }
     internal async Task JSFunctiion(int _grid_ID, string _function)
     {
+        //Calls JS function.
+
         JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Components/Worker_List.razor.js");
         await JS.InvokeVoidAsync(_function, _grid_ID);
     }

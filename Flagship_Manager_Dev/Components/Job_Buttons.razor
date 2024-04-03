@@ -1,5 +1,7 @@
 ﻿@using FlagShip_Manager.Helpers
-
+@*
+    Buttons for controlling Job status
+*@
 
 <style>
     .JobButtons {
@@ -72,6 +74,7 @@ else
 
     private async void RunSingleAction(int Action, int ID)
     {
+        //Calls the webButton action.
 
         int[] temp = new int[1];
         temp[0] = ID;
@@ -83,11 +86,15 @@ else
     }
     public string ShowHideCancelButton(int _status)
     {
+        //Toggles weither the Cancel button is visable depending on Job status.
+
         if (_status == 5 || _status == 2 || _status == 4) return "hidden";
         else return "visible";
     }
     public string ShowHideResumeButton(int _status)
     {
+        //Thoggles weither the Pause or resume button is visable.
+
         if (_status == 5 || _status == 3) return "visible";
         else return "hidden";
     }

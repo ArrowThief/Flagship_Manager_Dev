@@ -1,7 +1,11 @@
 ﻿@using System.Windows;
 @using Microsoft.JSInterop
 @inject IJSRuntime RunJS
-
+@* 
+    Meta data list. 
+    Displays extra data about the Job.
+    Also allows for copying output file paths on click.
+*@
 
 <style>
     .MetaBox{
@@ -59,7 +63,6 @@
             @if (ProjectPath != null)
             {
                 <label class="HoverGlow" @onclick="() => CopyToClipboard(ProjectPath)">@GetShortenedString(ProjectPath, 27)</label>
-                //navigator.clipboard.writeText('@CleanOutput(ProjectPath)')
             }
             else
             {
@@ -77,7 +80,7 @@
 </div>
 
 @code {
-    //AverageFrameTime.ToString(@"h\:mm\:ss")
+
     [Parameter]
     public int JobID { get; set; }
     [Parameter]
@@ -97,11 +100,12 @@
     [Parameter]
     public Double AverageFPS { get; set; }
 
-    //private static int test; 
     private IJSObjectReference JS;
 
     private static string GetShortenedString(string _Path, int Lenght)
     {
+        //Reduces string length to stay within constraints.
+
         if (_Path == null)
         {
             return "Missing Data";
@@ -112,21 +116,24 @@
         }
         else return _Path;
     }
-    private static string CleanOutput(string _Input, bool Parent = false){
-        string Output;
+    private static string CleanOutput(string _Input, bool Parent = false)
+    {
+        //Removes extra slasshes.
+        
         if(Parent)
         {
-            Output = Directory.GetParent(_Input).ToString().Replace("\\", "\\\\");
+            return Directory.GetParent(_Input).ToString().Replace("\\", "\\\\");
         }
-        else 
-        {
-            Output = _Input.Replace("\\", "\\\\");
-        }
-        return Output;
+        
+        return _Input.Replace("\\", "\\\\");
+        
     }
     private async Task CopyToClipboard(string text)
     {
+        //Copies string to clickboard.
+
         JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Components/Job_MetaData.razor.js");
+        
         try
         {
             Console.WriteLine(text);
@@ -140,6 +147,8 @@
     }
     private static string GetTimePerFrame(Double _TPM)
     {
+        //returns more human readable time per frame.
+
         if (_TPM > 1000000) return "Calculating...";
         else if (_TPM > 3600) return $"Hours Per Frame: {Math.Round(_TPM / 3600, 2)}";
         else if (_TPM > 60) return $"Minutes Per Frame: {Math.Round(_TPM / 60, 2)}";

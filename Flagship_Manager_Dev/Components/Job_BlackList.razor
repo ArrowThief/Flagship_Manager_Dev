@@ -79,12 +79,7 @@
 <div id="@BLID" class="BlackList">
     <div class="WorkerList">
         @foreach (WorkerObject w in WorkerServer.WorkerList)
-        {
-            @*
-            if(!idBlackList.Contains(w.WorkerID)){
-                if (w.AvailableApps.Find(a => a.AppName == renderApp) == null || w.Status == 7 || (!w.GPU && GPUrequired)) continue;
-            }*@
-                
+        {       
             <div style="display:table-row; height:31px;">
                 <div style="display:table-cell; width: 31px;">
                     <div class="CircleClass">
@@ -136,31 +131,33 @@
     public string? renderApp { get; set; } = "";
     [Parameter]
     public EventCallback UpdateJob { get; set; }
-
-    //private bool firstRender = true;
     public void AddorRemoveFromBlackList(int _WID, int _JID)
     {
+        //Toggles weither a Job is allowed to render a Job.
+        //Also calls cancel on any renderTasks currently being rendered by a newly blacklisted worker.
 
         Job? j = jobManager.jobList.Find(job => job.ID == _JID);
         if (j.Status == 2 || j.Status == 4 || j.Status == 5) return;
         if (j.WorkerBlackList.Contains(_WID))
         {
+            //If Worker is already blacklisted then remove from blacklist.
+
             j.WorkerBlackList.Remove(_WID);
             return;
         }
         foreach (renderTask t in j.renderTasks)
         {
-            //int LogIndex = t.Log.Count() - 1;
             WorkerObject worker = WorkerServer.WorkerList.Find(FW => FW.WorkerID == _WID);
-
             if (t.taskLogs.WorkerIDs.Any(id => id == worker.WorkerID) && t.Status != 2)
             {
+                //Iterates though renderTasks to find if blacklisted worker is currently rendering.
+                //If found Cancel request is called.
+
                 try
                 {
                     WorkerServer.cancelWorker(worker, false, true);
                     t.taskLogs.WriteToWorker($"\n-------------------------------Worker Log end-------------------------------\n{worker.name} Has been sent a cancel request.");
                     t.taskLogs.WriteToManager($"{worker.name} Has been sent a cancel request. Task will restart with a new worker.");
-                    //Logic.taskFail(j.ID, t.ID, worker.WorkerID, "Worker added to black list.", true, true);
                     t.taskFail("Worker added to black list.", true, true);
                     return;
                 }
@@ -176,6 +173,8 @@
 
     public static string GetReducedName(string _name)
     {
+        //Reduces worker name length if its too long for the given space.
+
         if (_name.Length > 12)
         {
             string endBit = _name.Substring(_name.Length - 4, 4);

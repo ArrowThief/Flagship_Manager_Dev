@@ -30,9 +30,6 @@ tempOutputPath ="L:\Libraries\RenderTemp\\Temp Output\\"
 timeout = 30
 priority = 50
 split = 1
-#class ImportSettings(bpy.types.Operator):
-#    bl_idname = "flagship.import"
-#    bl_label="flagship_import"
 @persistent
 def ImportSettings(self, context):
     print("Running Import")
@@ -57,6 +54,7 @@ def ImportSettings(self, context):
     startup = False
 
 
+#----------------------------------------------------------------------------------------------------------------------------------
         
 class FlagshipUIproperties(bpy.types.PropertyGroup):
     bl_idname = "ui.props"
@@ -76,9 +74,9 @@ class FlagshipUIproperties(bpy.types.PropertyGroup):
     priority_Prop: bpy.props.IntProperty(name="priority", soft_min=0, soft_max=100, default =priority)
     split_Prop: bpy.props.IntProperty(name="frames per task", soft_min=1, soft_max=50, default = split)
     timeout_Prop: bpy.props.IntProperty(name="Timeout", soft_min=1, soft_max=120, default = timeout)
-    #gpu: bpy.props.BoolProperty(name="gpu", default = True)
-    #overwrite: bpy.props.BoolProperty(name="ow", default = True)
+
 #----------------------------------------------------------------------------------------------------------------------------------
+
 class Continue(bpy.types.Operator):
     bl_idname = "opp.continue"
     bl_label = "Function 1"
@@ -102,7 +100,6 @@ class MessageBox(bpy.types.Operator):
     errorString = ""
     
     def draw(self, context):
-        #tools = context.scene.worth_group_tools
         global force
         layout = self.layout
 
@@ -132,21 +129,25 @@ class MessageBox(bpy.types.Operator):
 
         move_back = lambda: bpy.context.window.cursor_warp(x, y)
         bpy.app.timers.register(move_back, first_interval=0.001)
+
 #----------------------------------------------------------------------------------------------------------------------------------
+
 class SubmitRender(bpy.types.Operator):
     bl_idname = "render.submitrender"
     bl_label = "submit_render"
     
-    
-    
     def GetFirstActiveOutputNode():
+   
+        # GetsOutput path with hashes
+    
         for node in bpy.context.scene.node_tree.nodes:
             if node.bl_idname == 'CompositorNodeOutputFile':
                 if node.mute == False:
                     for input in node.inputs:
                         if input.is_linked:
                             return node  
-    # GetsOutput path with hashes
+    
+    
     def FindOutputPath(_basePath, extension):
         try:
             fullFilePath = os.path.dirname(_basePath) + "\\"
@@ -169,7 +170,11 @@ class SubmitRender(bpy.types.Operator):
         fullFilePath += FileName + extension 
         return fullFilePath   
     # Gets extension from node output
+    
     def GetNodeOutputExtension(_format):
+
+        #Returns correct file extention for format.
+        
         if(_format == "BPM"):return ".bpm"    
         elif(_format == "IRIS"): return ".iris"
         elif(_format == "PNG"): return ".png"
@@ -188,6 +193,9 @@ class SubmitRender(bpy.types.Operator):
         return
     
     def FindAdjustedSplit(Frames, FrameStep):
+        
+        #Returns auto adjusted split number
+        
         Adjusted = 0;
         Count = 0;
         while(Adjusted <= Frames):
@@ -198,6 +206,11 @@ class SubmitRender(bpy.types.Operator):
 
     def execute(self, context):
         
+        #Builds JSON object from project settings.
+        #Checks if filepath is in use, itterates if true.
+        #Saves project to CtlFolder.
+
+
         global ctlPath
         global force
         global tempProjectPath 
@@ -218,14 +231,10 @@ class SubmitRender(bpy.types.Operator):
         errorMessage = "Output error! Please check your file output path"
         
         ogFilePath = bpy.data.filepath
-        workorderFilePath = ctlPath #"M:\\Render Watch folders\\RenderControl\\test.txt"
+        workorderFilePath = ctlPath
         if(workorderFilePath == ""):workorderFilePath = "M:\\Render Watch folders\\RenderControl\\RenderCMD\\"
-        #general render info
         currentScene = bpy.context.scene
-
-        #projectFilepath = bpy.data.filepath
-        tempProjectDir = tempProjectPath #<-----------------------------------------------------------------------------------------------------------------------
-        
+        tempProjectDir = tempProjectPath
         while(True):
             GenFileName = str(random.randrange(10000, 99999))
             if not os.path.exists(tempProjectDir + GenFileName):
@@ -243,7 +252,10 @@ class SubmitRender(bpy.types.Operator):
         Step = currentScene.frame_step
         currentScene.render.use_overwrite = True
         overwrite = currentScene.render.use_overwrite
-        currentScene.render.filepath = tmpOutputPath #set tmp output to the one in the GUI
+        
+        #set tmp output to the one in the GUI
+        currentScene.render.filepath = tmpOutputPath
+        
         startFrame = currentScene.frame_start
         frameRange = (currentScene.frame_end - startFrame)
         frameRange += 1
@@ -260,10 +272,12 @@ class SubmitRender(bpy.types.Operator):
             
         maxRenderTime = timeout
 
-
         #check if nodes are being used for output
+        
         if(currentScene.use_nodes):
+            
             #Using Nodes
+            
             nodes = currentScene.node_tree.nodes
             ActiveOutput = GetFirstActiveOutputNode();
             print(ActiveOutput)
@@ -273,7 +287,9 @@ class SubmitRender(bpy.types.Operator):
             outputType = ActiveOutput.format.file_format
             print("using Nodes")
             if(outputType == "OPEN_EXR_MULTILAYER"):
+                
                 #Get name from base path 
+                
                 outputType = "MULTILAYER_EXR"
                 if(ActiveOutput.base_path[-1] == "\\"):
                     
@@ -287,7 +303,9 @@ class SubmitRender(bpy.types.Operator):
                         ActiveOutput.base_path = ActiveOutput.base_path[:-1] + "_####.exr"
                     else: error = True
                 elif(ActiveOutput.base_path[-1] == "_"):
+                    
                     #Check for underscores in file output names
+                    
                     if force: 
                         ActiveOutput.base_path += "####.exr"
                     else:
@@ -305,12 +323,19 @@ class SubmitRender(bpy.types.Operator):
                 if(error):
                     errorMessage = "Naming error in output path, please make sure path ends in a file not a folder" 
                 filePath = ActiveOutput.base_path
-                outputFilePath = filePath #SubmitRender.FindOutputPath(filePath, ".exr")
+                outputFilePath = filePath 
                 
             else: 
+
+                #Not using nodes.
                 #Get name from file_slots[0].path
+                
                 for name in ActiveOutput.file_slots:
-                    if(name.path[-1] != "_" and name.path[-1] != "#"):name.path += "_"#Check for underscores in file output names
+                    if(name.path[-1] != "_" and name.path[-1] != "#"):
+                        
+                        #Check for underscores in file output names
+                        
+                        name.path += "_"
                 filePath = ActiveOutput.base_path
                 indexCount = 0
                 fileName = "null"
@@ -345,15 +370,10 @@ class SubmitRender(bpy.types.Operator):
                         error = True
                         errorMessage = "Output Path Should be a folder, but it's currently a file"
                 
-                #print("Debug, output index: " + str(indexCount))
-                #print("Output type: "+ outputType)
                 renderExtension = SubmitRender.GetNodeOutputExtension(outputType)
                 outputFilePath = SubmitRender.FindOutputPath(filePath + fileName, renderExtension)
             
             print("This is the FP: " + outputFilePath)
-            
-
-
             
         else:
             #Using Output from Render panel
@@ -364,15 +384,14 @@ class SubmitRender(bpy.types.Operator):
                 currentScene.render.filepath += "_"
             outputFilePath = SubmitRender.FindOutputPath(currentScene.render.filepath, currentScene.render.file_extension)
 
-
-
-
         #Find if GPU is required for this render.
+
         if (currentScene.cycles.device == "CPU"):
             GPU = False
         else: GPU = True
 
         #Find if this render is to a video file.
+
         if(outputType == "AVI_JPEG"):
             vid = True
         elif (outputType == "AVI_RAW"):
@@ -380,10 +399,9 @@ class SubmitRender(bpy.types.Operator):
         elif (outputType == "FFMPEG"):
             vid = True
         else :vid = False
-        
-        #Saves a duplicate in the temp folder.
-        
+                
         #Naming check: 
+        
         if not force and error:
             MessageBox.errorString = errorMessage
             bpy.ops.message.messagebox('INVOKE_DEFAULT')
@@ -394,6 +412,7 @@ class SubmitRender(bpy.types.Operator):
         bpy.ops.wm.save_as_mainfile(copy=True,filepath = projectFilepath)
         
         #buld Json object
+        
         outputWorkOrder = {
             "Project": projectFilepath,
             "WorkingProject": ogFilePath,  
@@ -415,20 +434,18 @@ class SubmitRender(bpy.types.Operator):
         writeOutput =  "[" +str(outputWorkOrder).replace("'", "\"") + "]"
         writeOutput = writeOutput.replace("True", "true")
         writeOutput = writeOutput.replace("False","false")
-        #write to file
         FinalOutput = workorderFilePath + fileName + ".txt"
-        #bpy.ops.wm.save_as_mainfile()
         
-        #print(outputWorkOrder)
         outputFile = open(FinalOutput, "w") 
         outputFile.write( writeOutput)
         outputFile.close()
         
-        #bpy.ops.wm.open_mainfile(filepath=ogFilePath)
         if(force):
             force = False
         print("Finished")
         return {'FINISHED'}
+
+#----------------------------------------------------------------------------------------------------------------------------------
 
 class FlagshipClientPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -446,45 +463,38 @@ class FlagshipClientPanel(bpy.types.Panel):
         if startup:
             print("Startup?")
             startup = False
-            #ImportSettings(self, context)
-
+            
         Props = context.scene.worth_group_tools
         temp = Props.ctlPath_Prop
-        #if ctlPath != Props.ctlPath_Prop:
-            #Props.ctlPath_prop = ctlPath
-
 
         layout = self.layout
-        #scene = context.scene
-
-        # Create a simple row.
-        #layout.label(text=" Simple Row:")
+        
         col1 = layout.column()
+
+        #CtlPath text input
         col1.prop(Props, "ctlPath_Prop")
-        #if ctlPath != temp:
-            #print("They aren't the same")
-        #    Props.ctlPath_Prop.set(ctlPath)
-        #    print("Changed")
-        print("CtlPath: " + ctlPath)
-        #print("PROP: " + col1.prop)
+
+        #Temp projects path text input
         col1.prop(Props, "tempProjectPath_Prop")
         row1 = layout.row()
+
+        #Priority int input
         row1.prop(Props, "priority_Prop")
         
-        
         row2 = layout.row()
+
+        #Split int input
         row2.prop(Props, "split_Prop")
+
+        #Timeout int input
         row2.prop(Props, "timeout_Prop")
-        
-        #row3 = layout.row()
-        #row3.prop(Props, "gpu")
-        #row3.prop(currentScene.render.use_overwrite)
-        
         
         # Big render button
         row = layout.row()
         row.scale_y = 2.0
         row.operator("render.submitrender", text = "Render on network")
+
+#----------------------------------------------------------------------------------------------------------------------------------
 
 def register():
     bpy.utils.register_class(FlagshipUIproperties)
@@ -492,8 +502,9 @@ def register():
     bpy.utils.register_class(SubmitRender)
     bpy.utils.register_class(Continue)
     bpy.utils.register_class(MessageBox)
-    #bpy.utils.register_class(ImportSettings)
     bpy.types.Scene.worth_group_tools = bpy.props.PointerProperty(type=FlagshipUIproperties)
+    #bpy.utils.register_class(ImportSettings)
+    #Import settings is under construction.
 
 def unregister():
     bpy.utils.unregister_class(FlagshipUIproperties)
