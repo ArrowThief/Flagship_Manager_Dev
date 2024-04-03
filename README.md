@@ -2,7 +2,7 @@
 
 # Flagship Render Manager
 
-Flagship is a distrobuted render manager for After effects and Blender projects.
+Flagship is a distributed render manager for After effects and Blender projects.
 
 ## Why?
 If you have ever worked in VFX you know that the biggest time sink is rendering. Not only the time it takes to process the rendering, but setting up and managing renders and machine time is also very time-consuming.
