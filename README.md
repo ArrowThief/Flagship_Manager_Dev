@@ -40,3 +40,7 @@ To get started you will need
 2. Open Blender and go to preferences and plugins. Search for flagship and click the checkbox.
 3. A new UI box will appear in your Render settings. Go there and input your Work order path, Temp Projects path, and Temp Render Path.
 4. Set up a render as you usually would, but click the submit render in the flagship panel. 
+
+## Rights
+Rights to Flagship Render Manager is owned by Mutiny FX.inc
+All rights reserved
