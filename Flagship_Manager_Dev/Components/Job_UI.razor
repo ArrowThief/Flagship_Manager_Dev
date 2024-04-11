@@ -19,6 +19,8 @@
         transition-property:all;
         transition-duration:5s;
     }
+
+    
 </style>
 @{
     var CBID = J.ID + "CB";
@@ -49,14 +51,21 @@
                 @onfocusout="()=> JSCheckValue(PriorityID)">
             </div>
         }
+
+        @*Progress Bar *@
+        
         @if (J.ShotAlert)
         {
-            <div class="ProgressBarBorderRed"><div class="pB" style="background: @GetStatusColor(J.Status);width: @GetProgressBarWidth(J.Progress)px;"></div><label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:19px; left:1px;">@J.Progress%</label></div>
+            <div class="ProgressBarBorderRed">
+                <div class="pB" style="background: @GetStatusColor(J.Status); width: @GetProgressBarWidth(J.Progress)px;"></div>
+                <label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:19px; left:1px;">@J.Progress%</label>
+            </div>
         }
         else
         {
             <div class="ProgressBarBorder"><div class="pB" style="background: @GetStatusColor(J.Status);width: @GetProgressBarWidth(J.Progress)px;"></div><label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:19px; left:1px;">@J.Progress%</label></div>
         }
+        
         <div class="TableCell" style="width: 90px;">@J.CompletedFrames/@J.TotalFramesToRender</div>
         <div class="TableCell" style="width: 80px;">@J.totalActiveTime.ToString(@"d\:hh\:mm")</div>
         <div class="TableCell" style="width: 80px;">@J.RemainingTime.ToString(@"d\:hh\:mm")</div>
