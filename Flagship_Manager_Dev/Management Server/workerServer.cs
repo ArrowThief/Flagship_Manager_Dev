@@ -37,6 +37,7 @@ namespace FlagShip_Manager
                     }
                     catch
                     {
+                        Console.WriteLine("ERROR in client cleanup");
                         w.Status = 7;
                         //WorkerList.Remove(w);
                     }
@@ -138,7 +139,7 @@ namespace FlagShip_Manager
                 int RTID = _worker.renderTaskID;
                 try
                 {
-                    j = jobManager.jobList.Find(jl => jl.ID == JID);
+                    j = jobManager.JobMap[JID];
                     if (j == null)
                     {
                         //Job not found in Job list, check Job archive.
@@ -384,6 +385,7 @@ namespace FlagShip_Manager
             }
             catch 
             {
+                Console.WriteLine("ERROR in build response");
                 //TODO: Check if this is causing problems.
                 return null;
             }
@@ -457,26 +459,23 @@ namespace FlagShip_Manager
 
             if (c == null) return;
             var cancelPacket = new tcpPacket();
-            bool fullbreak = false;
-            foreach (var j in jobManager.jobList)
+            Job j = jobManager.JobMap[c.JobID];
+            foreach (var t in j.renderTasks)
             {
-                foreach (var t in j.renderTasks)
+
+                if (t.ID == c.renderTaskID)
                 {
-
-                    if (t.ID == c.renderTaskID)
-                    {
-                        if (blackList) j.WorkerBlackList.Add(c.WorkerID);
-                        t.taskLogs.SubmitTime[t.Attempt()] = DateTime.Now;
-                        if (!CancelJob && t.Status == 1) t.Status = 0;
-                        else t.Status = 5;
-                        fullbreak = true;
-                        break;
-                    }
-
-
+                    if (blackList) j.WorkerBlackList.Add(c.WorkerID);
+                    t.taskLogs.SubmitTime[t.Attempt()] = DateTime.Now;
+                    //if (!CancelJob && t.Status == 1) t.Status = 0;
+                    //else
+                    t.Status = 5;
+                    break;
                 }
-                if (fullbreak) break;
+
+
             }
+
             cancelPacket.command = "cancel";
             cancelPacket.arguments = new string[0];
             c.packetBuffer = cancelPacket;

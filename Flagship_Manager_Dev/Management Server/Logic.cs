@@ -8,7 +8,7 @@ namespace FlagShip_Manager
         //A class for storing logical operations. 
         //TODO: Move methods into thier proper classes. 
 
-        public static List<Job> getQueuedJobs(List<Job> jobList)
+        public static List<Job> getQueuedJobs()
         {
             //Gets a list of jobs that haven't yet been rendered. 
 
@@ -24,7 +24,7 @@ namespace FlagShip_Manager
             for (int i = 0; i < jobManager.ActiveIDList.Count(); i++)
             {
                 int JID = jobManager.ActiveIDList[i];
-                Job j = jobList.Find(jo => jo.ID == JID);
+                Job j = jobManager.JobMap[JID];
                 if (j.finished) continue;
                 else if (j.fail)
                 {
@@ -63,9 +63,9 @@ namespace FlagShip_Manager
             List<int> _return = new List<int>();
             var workers = WorkerServer.WorkerList;
             var activeJobs = new List<Job>();
-            for(int jindex = 0; jindex < jobManager.jobList.Count(); jindex++)
+            for(int jindex = 0; jindex < jobManager.ActiveIDList.Count(); jindex++)
             {
-                Job j = jobManager.jobList[jindex];
+                Job j = jobManager.JobMap[jobManager.ActiveIDList[jindex]];
                 if (!j.Archive && (j.Status == 0 || j.Status == 1)) activeJobs.Add(j);//Builds a list of jobs that are currently waiting to be rendered.            
             }
             for (int wI = 0; wI < workers.Count(); wI++)

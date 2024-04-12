@@ -259,7 +259,7 @@
     }
     public void ArchiveJob(int _ID)
     {
-        var j = jobManager.jobList.Find(job => job.ID == _ID);
+        var j = jobManager.JobMap[_ID];
         //Job JobtoArchive = jobManager.jobList[JobIndex];
         if (!j.finished) WebButtons.CancelJob(_ID);
         //JobtoArchive.Selected = false;

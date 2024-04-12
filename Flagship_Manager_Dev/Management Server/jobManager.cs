@@ -1,5 +1,6 @@
 ﻿using FlagShip_Manager.Management_Server;
 using FlagShip_Manager.Objects;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Text.Json;
@@ -13,9 +14,13 @@ namespace FlagShip_Manager
         //Stores and imports Jobs, manages RenderTasks distrobution, also monitors job progress and estimates time.
         //TODO: Breakup into new objects. 
 
-        public static List<Job> jobList = new List<Job>();
+        //public static List<Job> jobList = new List<Job>();
+        
         public static List<int> ActiveIDList = new List<int>();
         public static List<int> ArchiveIDList = new List<int>();
+
+        public static Dictionary<int, Job> JobMap = new Dictionary<int, Job>();
+
         private static DateTime LastCleanup = DateTime.MinValue;
         public static bool clearAvailableWorkers = false;
         public static Path_Settings ActiveSettings = new Path_Settings();
@@ -85,9 +90,9 @@ namespace FlagShip_Manager
                 activeJobs.Clear();
                 availableWorkers.Clear();
 
-                if (jobList.Count() > 0 && !Database.Startup)
+                if (JobMap.Count() > 0 && !Database.Startup)
                 {
-                    activeJobs = Logic.getQueuedJobs(jobList);
+                    activeJobs = Logic.getQueuedJobs();
                     if (activeJobs.Count == 0)
                     {
                         if (clear)
@@ -182,7 +187,7 @@ namespace FlagShip_Manager
                 try
                 {
                     int tempID = ArchiveIDList[ID];
-                    Job tempJob = jobList.Find(j => j.ID == tempID);
+                    Job tempJob = JobMap[tempID];
                     if (tempJob != null)
                     {
                         if (tempJob.ID != -1)
@@ -198,7 +203,7 @@ namespace FlagShip_Manager
                                 {
                                     Console.WriteLine("Cannot remove project file. it will remain on server.");
                                 }
-                                jobList.Remove(tempJob);
+                                JobMap.Remove(tempID);
                                 ArchiveIDList.Remove(tempID);
                                 ID--;
                             }
@@ -372,13 +377,9 @@ namespace FlagShip_Manager
                 newJob.QueueIndex = Import.QueueIndex;
                 newJob.vid = Import.vid;
                 newJob.ID = RNG.Next(1000000, 9999999);
-                while (true)
+                while (JobMap.ContainsKey(newJob.ID))
                 {
-                    if (jobList.Any(j => j.ID == newJob.ID))
-                    {
-                        newJob.ID = RNG.Next(1000000, 9999999);
-                    }
-                    else break;
+                    newJob.ID = RNG.Next(1000000, 9999999);
                 }
                 newJob.WorkerBlackList = new List<int>();
                 newJob.RenderApp = Import.RenderApp.ToLower();
@@ -396,9 +397,11 @@ namespace FlagShip_Manager
                 newJob.ProgressPerSecond = new List<double>();
                 newJob.BuiildOutputDir();
                 newJob.SetOutputOffset();
-                jobList.Add(newJob);
+                //jobList.Add(newJob);
+                JobMap.Add(newJob.ID, newJob);
                 ActiveIDList.Add(newJob.ID);
-                if (jobList.Contains(newJob))
+                
+                if (JobMap.ContainsKey(newJob.ID))
                 {
                     inQueue[count] = true;
                     count++;
@@ -435,6 +438,7 @@ namespace FlagShip_Manager
                 }
                 
             }
+            
             Database.UpdateDBFile = true;
 
         }
@@ -489,7 +493,7 @@ namespace FlagShip_Manager
                 {
                     try
                     {
-                        if (jobList.Any(j => j.renderTasks.Any(rt => rt.ID == nt.ID))) nt.ID = rnd.Next(1000000, 9999999);
+                        if (JobMap[_JID].renderTasks.Any(rt => rt.ID == nt.ID)) nt.ID = rnd.Next(1000000, 9999999);
                         else break;
                     }
                     catch
@@ -509,9 +513,9 @@ namespace FlagShip_Manager
             List<string> ProgressThreads = new List<string>();
             while (true)
             {
-                for (int ji = 0; ji < jobList.Count(); ji++)
+                for (int ji = 0; ji < ActiveIDList.Count(); ji++)
                 {
-                    Job j = jobList[ji];
+                    Job j = JobMap[ActiveIDList[ji]];
                     if (j.Status == 1 && !ProgressThreads.Any(t => t == j.Name))
                     {
                         Thread temp = new Thread(() => {

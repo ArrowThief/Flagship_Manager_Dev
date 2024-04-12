@@ -1,5 +1,6 @@
 ﻿using FlagShip_Manager.Management_Server;
 using FlagShip_Manager.Objects;
+using System.Security.Cryptography;
 
 namespace FlagShip_Manager.Helpers
 {
@@ -20,7 +21,7 @@ namespace FlagShip_Manager.Helpers
         {
             //Moves job from Archive to Active queue.
 
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             j.Archive = false;
             j.ArchiveDate = DateTime.MaxValue;
@@ -40,8 +41,8 @@ namespace FlagShip_Manager.Helpers
         {
             //Resumes a paused job.
 
-            var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
-            Job j = jobManager.jobList[JobIndex];
+            //var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             foreach (var rt in j.renderTasks)
             {
@@ -55,8 +56,8 @@ namespace FlagShip_Manager.Helpers
         {
             //Pauses Job. Also cancels any active tasks. 
 
-            var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
-            Job j = jobManager.jobList[JobIndex];
+            //var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             if (j.Status == 0 || j.Status == 1)
             {
@@ -89,8 +90,8 @@ namespace FlagShip_Manager.Helpers
         {
             //Cancels job. If any renderTasks are active cancel requests are sent to workers.
 
-            var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
-            Job j = jobManager.jobList[JobIndex];
+            //var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             foreach (var rt in j.renderTasks)
             {
@@ -107,7 +108,7 @@ namespace FlagShip_Manager.Helpers
             //Restarts job from begining. If any renderTasks are active cancel requests are sent to workers. 
             //TODO: Most of this should become a class method.
 
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             DateTime start = DateTime.Now;
             j.SetOutputOffset();
@@ -138,7 +139,7 @@ namespace FlagShip_Manager.Helpers
             //Restarts a single renderTask, removes progress from Job.
             //If Job is in archive queue, it is returned to active queue.
 
-            Job j = jobManager.jobList[jobManager.jobList.FindIndex(job => job.ID == _JID)];
+            Job j = jobManager.JobMap[_JID];
             j.selected = false;
             renderTask rT = j.renderTasks.Find(t => t.ID == _TID);
 
@@ -162,7 +163,7 @@ namespace FlagShip_Manager.Helpers
             //Removes job from Archive queue. 
             //Also deletes Project file from storage.
 
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             jobManager.ArchiveIDList.Remove(_ID);
             if (File.Exists(j.Project))
@@ -176,15 +177,15 @@ namespace FlagShip_Manager.Helpers
                     Console.WriteLine("Cannot remove project file. it will remain on server.");
                 }
             }
-            jobManager.jobList.Remove(j);
+            jobManager.JobMap.Remove(_ID);
         }
         public static void ArchiveJob(int _ID)
         {
-        
+
             //Moves job from Active Queue to Archive. 
             //If any renderTasks are active, cancel requests are sent to workers.
-            
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
+
+            Job j = jobManager.JobMap[_ID];
             j.selected = false;
             if (j.Status == 0 || j.Status == 1 || j.Status == 3) CancelJob(_ID);
             j.Archive = true;

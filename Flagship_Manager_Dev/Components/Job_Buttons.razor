@@ -68,6 +68,8 @@ else
     public EventCallback UpdateList { get; set; }
     [Parameter]
     public EventCallback<int> CheckID { get; set; }
+    [Parameter]
+    public EventCallback<int> RemoveID {get; set;}
 
     public string ShowBatch { get; set; } = "block";
 

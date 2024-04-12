@@ -180,9 +180,10 @@
     <div id="@ID">
         @for (int i = 0; i < JobIDList.Count(); i++)
         {
+            if (JobIDList.Count() < 1) break; 
             try
             {
-                Job J = jobManager.jobList[ConvertFromIDtoIndex(JobIDList[i])];
+            Job? J = GetJobFromID(JobIDList[i]);
                 <div >
                 @{
                     var CBID = J.ID + "CB";
@@ -294,9 +295,10 @@
                     <div style="width:1520px; height:4px;"></div>
                     
                 }
-                </div>
-            }catch{
-                i--;
+            </div>
+        }catch(Exception ex){
+            Console.WriteLine($"ERRROR In Job List ~\n\n{ex}");
+            i--;
             }
         }
     </div>
@@ -350,9 +352,10 @@
     };
 
     private IJSObjectReference JS;
-    
+
     private List<int> CheckedIDs = new List<int>();
-    
+    //private Dictionary<int, int> idDict = new Dictionary<int, int>();
+
     private bool ShowActiveBatch = false;
     private bool ShowArchiveBatch = false;
     public bool hidden = false;
@@ -365,13 +368,19 @@
     private Timer? time2;
     public renderTask? LogTask = null;
 
-    private int ConvertFromIDtoIndex(int _ID)
+    private Job? GetJobFromID(int _ID)
     {
         //Returns the index of a job from it's ID value
-        //TODO: For goodness sake use a hashmap. 
+        //TODO: For goodness sake use a hashmap.
 
-        return jobManager.jobList.FindIndex(j => j.ID == _ID);
+        if (jobManager.JobMap.ContainsKey(_ID))
+        {
+            return jobManager.JobMap[_ID];
+        }
+        return null;
     }
+     
+ 
     protected override void OnAfterRender(bool firstRender)
     {
         //Protected method for first render. 
@@ -522,7 +531,7 @@
     {
         //Moves job to Archive List
 
-        var j = jobManager.jobList.Find(job => job.ID == _ID);
+        var j = jobManager.JobMap[_ID];
         if (!j.finished) WebButtons.CancelJob(_ID);
         jobManager.ActiveIDList.Remove(_ID);
         jobManager.ArchiveIDList.Add(_ID);

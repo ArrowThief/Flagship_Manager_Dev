@@ -1,6 +1,8 @@
 ﻿using FlagShip_Manager.Objects;
+using Flagship_Manager_Dev.Components;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
+using System.Collections.Concurrent;
 
 namespace FlagShip_Manager.Management_Server
 {
@@ -13,6 +15,16 @@ namespace FlagShip_Manager.Management_Server
         public Job[]? JobList { get; set; }
         public int[]? ArchiveJobs { get; set; }
         public int[]? ActiveJobs { get; set; }
+        public Dictionary<int, Job> JobMap { get; set; }
+   
+        public DBObject()
+        {
+            WorkerList = new WorkerObject[0];
+            JobList = new Job[0];
+            ArchiveJobs = new int[0];
+            ActiveJobs = new int[0];
+            JobMap = new Dictionary<int, Job>();
+        }
     }
     public class Database
     {
@@ -26,7 +38,7 @@ namespace FlagShip_Manager.Management_Server
             //Runs on startup to load existing Database. Then stays in a loop to save database as needed. 
             Load(DataBaseFilePath);
             Thread.Sleep(1000);
-            ClearBrokenJobs();
+            //ClearBrokenJobs();
             Thread.Sleep(1000);
             while (true)
             {
@@ -44,7 +56,8 @@ namespace FlagShip_Manager.Management_Server
             //TODO: Build DBObject builder.
 
             DBObject DB = new DBObject();
-            DB.JobList = new List<Job>(jobManager.jobList).ToArray();
+            DB.JobMap = jobManager.JobMap;
+//            DB.JobList = new List<Job>(jobManager.Job).ToArray();
             DB.ActiveJobs = new List<int>(jobManager.ActiveIDList).ToArray();
             DB.ArchiveJobs = new List<int>(jobManager.ArchiveIDList).ToArray();
             DB.WorkerList = new List<WorkerObject>(WorkerServer.WorkerList).ToArray();
@@ -67,6 +80,7 @@ namespace FlagShip_Manager.Management_Server
             //Loads DBObject from disk.
 
             DBObject DB = new DBObject();
+           
             byte[] DBarry;
             if (File.Exists(_filePath))
             {
@@ -90,8 +104,13 @@ namespace FlagShip_Manager.Management_Server
                         worker.Status = 7;
                         WorkerServer.WorkerList.Add(worker);
                     }
+                    
                 }
+            }foreach(Job j in DB.JobList)
+            {
+                DB.JobMap[j.ID] = j;
             }
+            
             Startup = false;
         }
         public static void CheckDatabase(DBObject _DB)
@@ -149,7 +168,7 @@ namespace FlagShip_Manager.Management_Server
                         j.CompletedFrames = j.TotalFramesToRender;
                     }
                     else if (j.Status == 1) j.Status = 0;
-                    jobManager.jobList.Add(j);
+                    jobManager.JobMap[j.ID] = j;
                     foreach (Thread fail in Failthreads)
                     {
                         fail.Start();
@@ -205,7 +224,7 @@ namespace FlagShip_Manager.Management_Server
             }
             return Deserialized;
         }
-        private static void ClearBrokenJobs()
+        /*private static void ClearBrokenJobs()
         {
             //Checks for jobs that were duplicated during saving. 
             //TODO: Find the reason Jobs sometimes breake. 
@@ -213,7 +232,7 @@ namespace FlagShip_Manager.Management_Server
             int count = 0;
             List<int> RemoveList = new List<int>();
             Thread.Sleep(1000);
-            for (int i = 0; i < jobManager.jobList.Count; i++)
+            for (int i = 0; i < jobManager.JobMap.Count(); i++)
             {
                 if (!jobManager.ActiveIDList.Contains(jobManager.jobList[i].ID))
                 {
@@ -227,7 +246,7 @@ namespace FlagShip_Manager.Management_Server
             }
             Thread.Sleep(100);
         }
-
+        */
     }
 
 }

@@ -22,12 +22,12 @@
             
             if (LastSort == 1)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).Status.CompareTo(jobManager.jobList.Find(j => j.ID == x).Status));
+                SortList.Sort((x, y) => jobManager.JobMap[y].Status = y.CompareTo(jobManager.JobMap[x].Status));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).Status.CompareTo(jobManager.jobList.Find(j => j.ID == y).Status));
+                SortList.Sort((x, y) => jobManager.JobMap[x].Status = x.CompareTo(jobManager.JobMap[y].Status));
                 LastSort = 1;
             }
         }
@@ -42,12 +42,12 @@
 
             if (LastSort == 2)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).Name.CompareTo(jobManager.jobList.Find(j => j.ID == x).Name));
+                SortList.Sort((x, y) => jobManager.JobMap[y].Name.CompareTo(jobManager.JobMap[x].Name));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).Name.CompareTo(jobManager.jobList.Find(j => j.ID == y).Name));
+                SortList.Sort((x, y) => jobManager.JobMap[x].Name.CompareTo(jobManager.JobMap[y].Name));
                 LastSort = 2;
             }
         }
@@ -62,12 +62,12 @@
 
             if (LastSort == 3)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).Priority.CompareTo(jobManager.jobList.Find(j => j.ID == x).Priority));
+                SortList.Sort((x, y) => jobManager.JobMap[y].Priority.CompareTo(jobManager.JobMap[x].Priority));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).Priority.CompareTo(jobManager.jobList.Find(j => j.ID == y).Priority));
+                SortList.Sort((x, y) => jobManager.JobMap[x].Priority.CompareTo(jobManager.JobMap[y].Priority));
                 LastSort = 3;
             }
         }
@@ -81,12 +81,12 @@
             else SortList = jobManager.ActiveIDList;
             if (LastSort == 4)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).Progress.CompareTo(jobManager.jobList.Find(j => j.ID == x).Progress));
+                SortList.Sort((x, y) => jobManager.JobMap[y].Progress.CompareTo(jobManager.JobMap[x].Progress));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).Progress.CompareTo(jobManager.jobList.Find(j => j.ID == y).Progress));
+                SortList.Sort((x, y) => jobManager.JobMap[x].Progress.CompareTo(jobManager.JobMap[y].Progress));
                 LastSort = 4;
             }
         }
@@ -100,12 +100,12 @@
             else SortList = jobManager.ActiveIDList;
             if (LastSort == 5)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).CreationTime.CompareTo(jobManager.jobList.Find(j => j.ID == x).CreationTime));
+                SortList.Sort((x, y) => jobManager.JobMap[y].CreationTime.CompareTo(jobManager.JobMap[x].CreationTime));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).CreationTime.CompareTo(jobManager.jobList.Find(j => j.ID == y).CreationTime));
+                SortList.Sort((x, y) => jobManager.JobMap[x].CreationTime.CompareTo(jobManager.JobMap[y].CreationTime));
                 LastSort = 5;
             }
         }
@@ -119,12 +119,12 @@
             else SortList = jobManager.ActiveIDList;
             if (LastSort == 5)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).ArchiveDate.CompareTo(jobManager.jobList.Find(j => j.ID == x).ArchiveDate));
+                SortList.Sort((x, y) => jobManager.JobMap[y].ArchiveDate.CompareTo(jobManager.JobMap[x].ArchiveDate));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).ArchiveDate.CompareTo(jobManager.jobList.Find(j => j.ID == y).ArchiveDate));
+                SortList.Sort((x, y) => jobManager.JobMap[x].ArchiveDate.CompareTo(jobManager.JobMap[y].ArchiveDate));
                 LastSort = 5;
             }
         }
@@ -139,12 +139,12 @@
 
             if (LastSort == 6)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).RemainingTime.CompareTo(jobManager.jobList.Find(j => j.ID == x).RemainingTime));
+                SortList.Sort((x, y) => jobManager.JobMap[y].RemainingTime.CompareTo(jobManager.JobMap[x].RemainingTime));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).RemainingTime.CompareTo(jobManager.jobList.Find(j => j.ID == y).RemainingTime));
+                SortList.Sort((x, y) => jobManager.JobMap[x].RemainingTime.CompareTo(jobManager.JobMap[y].RemainingTime));
                 LastSort = 6;
             }
         }
@@ -159,12 +159,12 @@
 
             if (LastSort == 7)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).FrameRange.CompareTo(jobManager.jobList.Find(j => j.ID == x).FrameRange));
+                SortList.Sort((x, y) => jobManager.JobMap[y].FrameRange.CompareTo(jobManager.JobMap[x].FrameRange));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).FrameRange.CompareTo(jobManager.jobList.Find(j => j.ID == y).FrameRange));
+                SortList.Sort((x, y) => jobManager.JobMap[x].FrameRange.CompareTo(jobManager.JobMap[y].FrameRange));
                 LastSort = 7;
             }
 
@@ -180,12 +180,12 @@
 
             if (LastSort == 8)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).RenderApp.CompareTo(jobManager.jobList.Find(j => j.ID == x).RenderApp));
+                SortList.Sort((x, y) => jobManager.JobMap[y].RenderApp.CompareTo(jobManager.JobMap[x].RenderApp));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).RenderApp.CompareTo(jobManager.jobList.Find(j => j.ID == y).RenderApp));
+                SortList.Sort((x, y) => jobManager.JobMap[x].RenderApp.CompareTo(jobManager.JobMap[y].RenderApp));
                 LastSort = 8;
             }
         }
@@ -200,12 +200,12 @@
 
             if (LastSort == 9)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).totalActiveTime.CompareTo(jobManager.jobList.Find(j => j.ID == x).totalActiveTime));
+                SortList.Sort((x, y) => jobManager.JobMap[y].totalActiveTime.CompareTo(jobManager.JobMap[x].totalActiveTime));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).totalActiveTime.CompareTo(jobManager.jobList.Find(j => j.ID == y).totalActiveTime));
+                SortList.Sort((x, y) => jobManager.JobMap[x].totalActiveTime.CompareTo(jobManager.JobMap[y].totalActiveTime));
                 LastSort = 9;
             }
         }
@@ -220,12 +220,12 @@
 
             if (LastSort == 8)
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == y).FileFormat.CompareTo(jobManager.jobList.Find(j => j.ID == x).FileFormat));
+                SortList.Sort((x, y) => jobManager.JobMap[y].FileFormat.CompareTo(jobManager.JobMap[x].FileFormat));
                 LastSort = -1;
             }
             else
             {
-                SortList.Sort((x, y) => jobManager.jobList.Find(j => j.ID == x).FileFormat.CompareTo(jobManager.jobList.Find(j => j.ID == y).FileFormat));
+                SortList.Sort((x, y) => jobManager.JobMap[x].FileFormat.CompareTo(jobManager.JobMap[y].FileFormat));
                 LastSort = 8;
             }
         }

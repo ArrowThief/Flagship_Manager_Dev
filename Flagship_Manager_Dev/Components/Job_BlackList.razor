@@ -136,7 +136,7 @@
         //Toggles weither a Job is allowed to render a Job.
         //Also calls cancel on any renderTasks currently being rendered by a newly blacklisted worker.
 
-        Job? j = jobManager.jobList.Find(job => job.ID == _JID);
+        Job? j = jobManager.JobMap[_JID];
         if (j.Status == 2 || j.Status == 4 || j.Status == 5) return;
         if (j.WorkerBlackList.Contains(_WID))
         {
@@ -163,7 +163,7 @@
                 }
                 catch
                 {
-
+                    Console.WriteLine("ERROR in Add or remove from Blacklist");
                 }
             }
         }

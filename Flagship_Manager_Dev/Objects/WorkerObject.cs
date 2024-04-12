@@ -89,7 +89,7 @@
             //Returns currently assigned renderTask
             //TODO: Make refrence.
 
-            renderTask? rT = jobManager.jobList.Find(j => j.ID == JobID).renderTasks.Find(rT => rT.ID == renderTaskID);
+            renderTask? rT = jobManager.JobMap[JobID].renderTasks.Find(rT => rT.ID == renderTaskID);
             return rT;
         }
         public void WorkerTaskFail(string ErrorLog, bool cancel = false, bool IgnoreAttempts = false)

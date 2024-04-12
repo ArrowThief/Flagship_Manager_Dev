@@ -79,7 +79,7 @@ namespace FlagShip_Manager.Objects
             //Returns Parent Job. 
             //TODO: Replace with a refrence
 
-            return jobManager.jobList.Find(j => j.ID == JID);
+            return jobManager.JobMap[JID];
         }
         public void GetProgressFromAELog(float _fps = 0)
         {
@@ -204,6 +204,7 @@ namespace FlagShip_Manager.Objects
                     missingWorker = true;
                     w = new WorkerObject();
                     w.name = "Missing Data";
+                    Console.WriteLine(ErrorLog);
                 }
 
                 Regex OutofVRAM = new Regex("(19969)");
@@ -315,6 +316,7 @@ namespace FlagShip_Manager.Objects
             }
             catch
             {
+                Console.WriteLine("Error in task fail");
                 return;
             }
 
