@@ -78,7 +78,7 @@
 
 <div id="@BLID" class="BlackList">
     <div class="WorkerList">
-        @foreach (WorkerObject w in WorkerServer.WorkerList)
+        @foreach (Worker w in WorkerServer.WorkerList)
         {       
             <div style="display:table-row; height:31px;">
                 <div style="display:table-cell; width: 31px;">
@@ -147,7 +147,7 @@
         }
         foreach (renderTask t in j.renderTasks)
         {
-            WorkerObject worker = WorkerServer.WorkerList.Find(FW => FW.WorkerID == _WID);
+            Worker worker = WorkerServer.WorkerList.Find(FW => FW.WorkerID == _WID);
             if (t.taskLogs.WorkerIDs.Any(id => id == worker.WorkerID) && t.Status != 2)
             {
                 //Iterates though renderTasks to find if blacklisted worker is currently rendering.

@@ -40,7 +40,7 @@ table, h3{
     
         @for(int wI = 0; wI < WorkerServer.WorkerList.Count(); wI++)
         {
-            WorkerObject @w = WorkerServer.WorkerList[wI];
+            Worker @w = WorkerServer.WorkerList[wI];
             RenderApp? Default = w.AvailableApps.Find(a => a.Default == true);
             <tr>
                 <td style="border: 5px solid; width: 120px; text-align: center;"> @w.name </td>

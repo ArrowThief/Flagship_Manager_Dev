@@ -140,7 +140,7 @@ namespace FlagShip_Manager.Helpers
 
             Job j = jobManager.jobList[jobManager.jobList.FindIndex(job => job.ID == _JID)];
             j.selected = false;
-            renderTask rT = j.renderTasks.Find(t => t.ID == _TID);
+            renderTask rT = j.renderTasks[_TID];
 
             float ProgressPerTask = 100 / j.renderTasks.Count();
             if (rT.progress > 0 && rT.Status != 2) j.Progress -= (ProgressPerTask / 100) * rT.progress;
@@ -241,7 +241,7 @@ namespace FlagShip_Manager.Helpers
                         break;
                 }
             }
-            Database.UpdateDBFile = true;
+            DB.UpdateDBFile = true;
         }
     }
 }

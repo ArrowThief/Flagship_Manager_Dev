@@ -11,20 +11,21 @@ namespace FlagShip_Manager
         //Stores workerObjects for every worker that has previously connected. 
         //Listens for and creates connection threads for new workers. 
 
-        public static List<WorkerObject> WorkerList = new List<WorkerObject>();
+
         private static Socket _serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         private static Thread Cleanup = new Thread(() => clientCleanup());
 
         private static void clientCleanup()
         {
             //Disconnects workers who still have an active TCP connection, but haven't responded in more than 4 minutes. 
+            //TODO: Look into this, it could have to do with the weird connection issues.
 
             while (true)
             {
                 Thread.Sleep(1000);
-                for (int i = 0; i < WorkerList.Count(); i++)
+                for (int i = 0; i < DB.WorkerList.Count(); i++)
                 {
-                    WorkerObject w = WorkerList[i];
+                    Worker w = DB.WorkerList[i];
                     if (w == null || w.Dummy) continue;
                     try
                     {
@@ -41,7 +42,7 @@ namespace FlagShip_Manager
                         //WorkerList.Remove(w);
                     }
                 }
-                WorkerList = WorkerList.DistinctBy(x => x.WorkerID).ToList();
+                DB.WorkerList = DB.WorkerList.DistinctBy(x => x.WorkerID).ToList();
 
             }
         }
@@ -69,7 +70,9 @@ namespace FlagShip_Manager
             //Worker connection loop. While worker is connected loop will send and recieve data every second. 
             //TODO: Find bug that sometimes caues workers to get caught in a loop of connecting and disconnecting. 
 
-            WorkerObject worker = new WorkerObject();
+            var WorkerList = DB.WorkerList;
+
+            Worker worker = new Worker();
             tcpPacket? sendPacket = new tcpPacket();
             tcpPacket? recPacket = new tcpPacket();
             while (_socket.Connected)
@@ -123,7 +126,7 @@ namespace FlagShip_Manager
 
             worker.Status = 7;
         }
-        private static tcpPacket? BuildResponse(tcpPacket _packet, ref WorkerObject _worker)
+        private static tcpPacket? BuildResponse(tcpPacket _packet, ref Worker _worker)
         {
             //builds a response tcpPacket to a recieved tcpPacket.
             //TODO: Remove references to Passive mode. 
@@ -135,24 +138,23 @@ namespace FlagShip_Manager
             if (_worker.JobID != 0)
             {
                 int JID = _worker.JobID;
-                int RTID = _worker.renderTaskID;
                 try
                 {
                     j = jobManager.jobList.Find(jl => jl.ID == JID);
                     if (j == null)
                     {
                         //Job not found in Job list, check Job archive.
-                        Console.WriteLine($"Worker has attempted to report on a Job that doesn't exist. \njob ID: {JID}\nTask ID: {RTID}");
+                        Console.WriteLine($"Worker has attempted to report on a Job that doesn't exist. \njob ID: {JID}\nTask ID: {_worker.renderTaskIndex}");
                         WorkerServer.cancelWorker(_worker, false, false);
                     }
 
-                    rT = j.renderTasks.Find(task => task.ID == RTID);
+                    rT = j.renderTasks[_worker.renderTaskIndex];
                     rT.lastUpdate = DateTime.Now;
                     if (_packet.command != "logpart" && _packet.arguments.Count() > 0)
                     {
                         if (_packet.arguments[0] != "log rebuild")
                         {
-                            if (_packet.Logs.Count() > 0 && rT.ID == _worker.renderTaskID)
+                            if (_packet.Logs.Count() > 0)
                             {
 
                                 foreach (string log in _packet.Logs)
@@ -169,7 +171,7 @@ namespace FlagShip_Manager
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Worker has attempted to report on a Job that doesn't exist. \njob ID: {JID}\nTask ID: {RTID} \n{ex}");
+                    Console.WriteLine($"Worker has attempted to report on a Job that doesn't exist. \njob ID: {JID}\nTask ID: {_worker.renderTaskIndex} \n{ex}");
                     WorkerServer.cancelWorker(_worker, false, false);
                 }
             }
@@ -281,13 +283,13 @@ namespace FlagShip_Manager
                             rT.taskLogs.WriteToWorker($"\n\n{_worker.name} has returned this task to the manager.\n\n-------------------------------Worker Log end-------------------------------\n");
                             rT.FinishReported = true;
                             rT.FinishReportedTime = DateTime.Now;
-                            _worker.renderTaskID = 0;
+                            _worker.renderTaskIndex = -1;
                             _worker.JobID = 0;
                         }
                         else
                         {
                             _worker.JobID = 0;
-                            _worker.renderTaskID = 0;
+                            _worker.renderTaskIndex = -1;
                         }
                         _worker.LogBuffer = "";
                         _worker.LogCount = 0;
@@ -315,7 +317,7 @@ namespace FlagShip_Manager
                         
                         sendPacket.command = "acknowledge";
                         _worker.awaitUpdate = false;
-                        _worker.renderTaskID = 0;
+                        _worker.renderTaskIndex = -1;
                         _worker.JobID = 0;
                         break;
 
@@ -388,17 +390,18 @@ namespace FlagShip_Manager
                 return null;
             }
         }
-        private static tcpPacket newWorkerSetup(tcpPacket receivedPacket, ref WorkerObject _worker)
+        private static tcpPacket newWorkerSetup(tcpPacket receivedPacket, ref Worker _worker)
         {
             //creates new workerObject, adds it to lists and returns a response tcpPacket.
             //TODO: Rewrite ID creation to be a simpler itteration. 
 
+            var WorkerList = DB.WorkerList;
             tcpPacket returnPacket = new tcpPacket();
             if (WorkerList.Any(w => w.WorkerID == receivedPacket.senderID))
             {
                 //Worker exists in worker history
 
-                _worker = WorkerList.Find(w => w.WorkerID == receivedPacket.senderID);
+                _worker = DB.FindWorker(receivedPacket.senderID);
                 returnPacket.command = "acknowledge_me";
                 returnPacket.arguments = new string[1];
             }
@@ -438,52 +441,40 @@ namespace FlagShip_Manager
                 _worker.lastSeen = DateTime.Now;
                 WorkerList.Add(_worker);
                 Console.WriteLine($"New Worker added to WorkerList");
-                Database.UpdateDBFile = true;
+                DB.UpdateDBFile = true;
             }
 
-            WorkerList = WorkerList.OrderBy(x => x.name).ToList<WorkerObject>();
+            WorkerList = WorkerList.OrderBy(x => x.name).ToList<Worker>();
             return returnPacket;
         }
-        internal static void dissconnectClient(WorkerObject c)
+        internal static void dissconnectClient(Worker c)
         {
             //Graceful dissconnection. 
 
             c.ConsoleBuffer = "Disconnected.";
             c.Status = 7;
         }
-        internal static void cancelWorker(WorkerObject c, bool CancelJob, bool blackList)
+        internal static void cancelWorker(Worker c, bool CancelJob, bool blackList)
         {
             //Request worker cancel currently active renderTask.
 
             if (c == null) return;
             var cancelPacket = new tcpPacket();
-            bool fullbreak = false;
-            foreach (var j in jobManager.jobList)
-            {
-                foreach (var t in j.renderTasks)
-                {
-
-                    if (t.ID == c.renderTaskID)
-                    {
-                        if (blackList) j.WorkerBlackList.Add(c.WorkerID);
-                        t.taskLogs.SubmitTime[t.Attempt()] = DateTime.Now;
-                        if (!CancelJob && t.Status == 1) t.Status = 0;
-                        else t.Status = 5;
-                        fullbreak = true;
-                        break;
-                    }
-
-
-                }
-                if (fullbreak) break;
-            }
+            
+            Job j = DB.FindActive(c.JobID);
+            renderTask rT = j.renderTasks[c.renderTaskIndex];
+            if (blackList) j.WorkerBlackList.Add(c.WorkerID);
+            rT.taskLogs.SubmitTime[rT.Attempt()] = DateTime.Now;
+            if (!CancelJob && rT.Status == 1) rT.Status = 0;
+            else rT.Status = 5;
+            
             cancelPacket.command = "cancel";
             cancelPacket.arguments = new string[0];
             c.packetBuffer = cancelPacket;
             c.JobID = 0;
-            c.renderTaskID = 0;
+            c.renderTaskIndex = -1;
         }
-        public static void killWorker(WorkerObject _c)
+        public static void killWorker(Worker _c)
         {
             //Shuts down worker software on client PC.
 
@@ -492,6 +483,13 @@ namespace FlagShip_Manager
             _c.packetBuffer.arguments = new string[0];
             Console.WriteLine($"{_c.name} has been shutdown.");
             Thread.Sleep(500);
+        }
+
+        internal static Worker Find(int v)
+        {
+            //Binary search though worker list.
+
+            throw new NotImplementedException();
         }
     }
 }

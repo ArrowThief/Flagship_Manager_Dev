@@ -1,7 +1,9 @@
 ﻿using FlagShip_Manager.Management_Server;
 using FlagShip_Manager.Objects;
+using Flagship_Manager_Dev;
 using System.Diagnostics;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
@@ -13,9 +15,6 @@ namespace FlagShip_Manager
         //Stores and imports Jobs, manages RenderTasks distrobution, also monitors job progress and estimates time.
         //TODO: Breakup into new objects. 
 
-        public static List<Job> jobList = new List<Job>();
-        public static List<int> ActiveIDList = new List<int>();
-        public static List<int> ArchiveIDList = new List<int>();
         private static DateTime LastCleanup = DateTime.MinValue;
         public static bool clearAvailableWorkers = false;
         public static Path_Settings ActiveSettings = new Path_Settings();
@@ -45,7 +44,7 @@ namespace FlagShip_Manager
             { 
                 Directory.CreateDirectory($"{ctlPath}\\Archive");
             }
-            Thread dbc = new Thread(() => Database.DataBaseManager());
+            Thread dbc = new Thread(() => DB.DataBaseManager());
             Thread cfnj = new Thread(() => checkForNewJobs(ctlPath));
             Thread jd = new Thread(() => jobDirector());
             Thread Progress = new Thread(() => CheckActiveJobsProgress());
@@ -68,8 +67,7 @@ namespace FlagShip_Manager
 
             List<Job> activeJobs = new List<Job>();
             List<int> availableWorkers = new List<int>();
-            ref List<WorkerObject> workers = ref WorkerServer.WorkerList;
-
+            
             bool clear = true;
 
             while (true)
@@ -85,7 +83,7 @@ namespace FlagShip_Manager
                 activeJobs.Clear();
                 availableWorkers.Clear();
 
-                if (jobList.Count() > 0 && !Database.Startup)
+                if (jobList.Count() > 0 && !DB.Startup)
                 {
                     activeJobs = Logic.getQueuedJobs(jobList);
                     if (activeJobs.Count == 0)
@@ -113,10 +111,10 @@ namespace FlagShip_Manager
                         foreach (int wi in availableWorkers)
                         {
                             if (clearAvailableWorkers) break;
-                            foreach (renderTask t in _job.renderTasks)
+                            for (int ri = 0; ri < _job.renderTasks.Length; ri++)
                             {
-                                TaskIndex = _job.renderTasks.FindIndex(i => i == t) + 1;
-                                if (t.Status == 0)
+                                renderTask rT = _job.renderTasks[ri];
+                                if (rT.Status == 0)
                                 {
                                     //Worker status map:
                                     //0 = ready for work
@@ -130,11 +128,11 @@ namespace FlagShip_Manager
                                     //8 = passive
                                     //9 = asleep
 
-                                    if (t.Status == 2)
+                                    if (rT.Status == 2)
                                     {
                                         continue;
                                     }
-                                    WorkerObject worker = workers[wi];
+                                    Worker worker = DB.WorkerList[wi];
                                     if (worker.AvailableApps.Any(a => a.AppName == _job.RenderApp))
                                     {
                                         try
@@ -144,24 +142,24 @@ namespace FlagShip_Manager
                                             {
                                                 _job.StartTimes.Add(DateTime.Now);
                                             }
-                                            t.taskLogs.add();
-                                            sendTasktoClientBuffer(_job, t, ref worker);
-                                            t.taskLogs.WriteToWorker($" Task {TaskIndex} submitted to {worker.name} for rendering.\n------------------------------Worker Log start------------------------------\n", false);
+                                            rT.taskLogs.add();
+                                            worker.sendTasktoClientBuffer(_job, rT, ri);
+                                            rT.taskLogs.WriteToWorker($" Task {TaskIndex} submitted to {worker.name} for rendering.\n------------------------------Worker Log start------------------------------\n", false);
                                             _job.Status = 1;
-                                            t.Status = 1;
-                                            t.taskLogs.SubmitTime[t.Attempt()] = DateTime.Now;
-                                            t.taskLogs.WriteID(worker.WorkerID);
+                                            rT.Status = 1;
+                                            rT.taskLogs.SubmitTime[rT.Attempt()] = DateTime.Now;
+                                            rT.taskLogs.WriteID(worker.WorkerID);
                                             if (clearAvailableWorkers) break;
-                                            worker.ConsoleBuffer = ($"Sending: {_job.Name} task index: {_job.renderTasks.FindIndex(i => i == t) + 1} of {_job.renderTasks.Count()} to {workers[wi].name}");
+                                            worker.ConsoleBuffer = ($"Sending: {_job.Name} task index: {ri} of {_job.renderTasks.Count()} to {DB.WorkerList[wi].name}");
                                             worker.awaitUpdate = true;
                                             break;
                                         }
                                         catch
                                         {
-                                            worker.renderTaskID = 0;
+                                            worker.renderTaskIndex = -1;
                                             worker.JobID = 0;
                                             worker.ConsoleBuffer = $"Failed to send task to {worker.name} buffer";
-                                            t.Status = 0;
+                                            rT.Status = 0;
                                         }
                                     }
                                 }
@@ -222,51 +220,7 @@ namespace FlagShip_Manager
                 }
             }
         }       
-        private static void sendTasktoClientBuffer(Job j, renderTask t, ref WorkerObject c)
-        {
-            //Prepes a tcpPacket to send renderTask to worker
-            //TODO: add build function to tcpPacket and rewrite code to be more readable.
-
-            tcpPacket sendPacket = new tcpPacket();
-            sendPacket.arguments = new string[11];
-            sendPacket.command = "render";
-            sendPacket.arguments[1] = j.Project;
-            sendPacket.arguments[2] = j.Name;
-            sendPacket.arguments[3] = j.RenderPreset;
-            sendPacket.arguments[4] = j.outputPath;
-            if (t.adjustedFirstFrame > t.FirstFrame && !j.vid) sendPacket.arguments[5] = t.adjustedFirstFrame.ToString();
-            else sendPacket.arguments[5] = t.FirstFrame.ToString();
-            sendPacket.arguments[6] = t.finalFrame.ToString();
-            sendPacket.arguments[7] = j.Overwrite.ToString();
-            sendPacket.arguments[8] = j.vid.ToString();
-            sendPacket.arguments[9] = j.FrameStep.ToString();
-            sendPacket.arguments[10] = j.QueueIndex.ToString();
-
-
-            
-            //This will chose which app the worker will use to render the job.
-            if (j.RenderApp.ToLower() == "ae")
-            {
-                sendPacket.arguments[0] = "ae";
-                //AfterEffects Arguments breakdown: $"-project \"argument[1]}\" -comp \"{argument[2]}\" -OMtemplate \"{argument[3]}\" -output \"{[argument[4]}\" -s {argument[5]} -e {argument[6]}";
-
-            }
-            else if (j.RenderApp.ToLower() == "blender")
-            {
-                sendPacket.arguments[0] = "blender";
-                //Blender Arguments breakdown: $"-b \"{args[1]}\" -s {args[5]} -e {args[6]} -a".
-            }
-            else if (j.RenderApp.ToLower() == "fusion")
-            {
-                //Not implemented yet.
-                sendPacket.arguments[0] = "fusion";
-            }
-            
-            c.renderTaskID = t.ID;
-            c.JobID = j.ID;
-            c.packetBuffer = sendPacket;
-            c.Status = 1;
-        }
+        
         private static void checkForNewJobs(string path)
         {
             //Checks the CtlFolder for new job submissions
@@ -291,7 +245,49 @@ namespace FlagShip_Manager
                             {
                                 if (!ErrorCheck.IsMatch(_job))
                                 {
-                                    ImportJob(_job); //creates Job object from Job file.
+                                    //creates Job object from Job file.
+
+                                    IList<importRender> imports = new List<importRender>();
+                                    using (var Stream = new StreamReader(_job))
+                                    {
+                                        imports = JsonSerializer.Deserialize<List<importRender>>(Stream.ReadToEnd());
+                                    }
+                                    foreach (importRender j in imports)
+                                    {
+                                        Job newJ = j.JsonToJob();
+                                        if (newJ.renderTasks.Length > 0)
+                                        {
+                                            DB.active.Add(newJ);
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine("Failed to import Job.");
+                                        }
+                                        
+                                        while (true)
+                                        {
+                                            //Checks if CtlFolder contains an Archive folder.
+                                            //Then checks if the Archive folder contains a file with the same name, if true appends a random number string and checks again. 
+
+                                            string ArchiveFilePath = Path.GetDirectoryName(_job) + "\\Archive\\" + j.Name + ".txt";
+                                            if (!File.Exists(ArchiveFilePath)) break;
+                                            else
+                                            {
+                                                ArchiveFilePath = Path.GetDirectoryName(_job) + "\\Archive\\" + j.Name + "_" + RandomNumberGenerator.GetInt32(9999) + ".txt";
+                                            }
+
+                                            try
+                                            {
+                                                File.Move(_job, ArchiveFilePath);
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                Console.WriteLine(ex.ToString());
+                                            }
+
+                                            DB.UpdateDBFile = true;
+                                        }
+                                    }
                                 }
                                 else { Console.WriteLine("Failed error check."); }   
                             }
@@ -304,204 +300,8 @@ namespace FlagShip_Manager
                 }
             }
         }
-        private static void ImportJob(string filePath)
-        {
-            //Imports job from importRender Type. 
-            //TODO: Move method into importRender and remove this method. 
-
-            List<importRender> Imports = new List<importRender>();
-            Random RNG = new Random();
-            Job newJob = new Job();
-            bool[] inQueue = null;
-            int count = 0;
-            using (var Stream = new StreamReader(filePath))
-            {
-                Imports = JsonSerializer.Deserialize<List<importRender>>(Stream.ReadToEnd());
-            }
-            inQueue = new bool[Imports.Count];
-            foreach (var Import in Imports)
-            {
-                int TotalFrames = Import.FrameRange;
-                int split = Import.split;
-                int chunk = 0;
-                if (split == 0) 
-                {
-                    //If a frame split is not specified, This will adjust split to try and create mostly equal chunk sizes between 10 and 50 frames.
-                    //This should allow the shot to be rendered over a good number of computers but no so many that it causes problems.
-
-                    split = 2;
-                    while (true)
-                    {
-                        chunk = TotalFrames / split;
-                        if (chunk > 35) split++;
-                        else if (chunk < 7)
-                        {
-                            split--;
-                            break;
-                        }
-                        else break;
-                    }
-                }
-                newJob = new Job();
-                if (Import.Name == "") newJob.Name = "Unsaved Project";
-                else newJob.Name = Import.Name;
-                
-                newJob.Project = Path.GetFullPath(HttpUtility.UrlDecode(Import.Project));
-                newJob.WorkingProject = Import.WorkingProject;
-                newJob.outputPath = Import.Filepath;
-                if (Import.Filepath != "") newJob.outputDir = Directory.GetParent(Import.Filepath).ToString();
-                else newJob.outputDir = "";
-                newJob.RenderPreset = Import.outputType;
-                newJob.FirstFrame = Convert.ToInt32(Math.Floor(Import.StartFrame));
-                if (Import.FrameStep > 1)
-                {
-                    newJob.FrameStep = Import.FrameStep;
-                    newJob.TotalFramesToRender = Convert.ToInt32(decimal.Floor(Import.FrameRange / Import.FrameStep));
-                    newJob.FrameRange = newJob.TotalFramesToRender * Import.FrameStep;
-                }
-                else
-                {
-                    newJob.FrameStep = 1;
-                    newJob.TotalFramesToRender = Import.FrameRange;
-                    newJob.FrameRange = Import.FrameRange;
-                }
-                newJob.GPU = Convert.ToBoolean(Import.GPU);
-                newJob.FileFormat = Logic.GetRenderType(Import.outputType, Import.Filepath);
-                if (Import.RenderApp.ToLower() == "blender") newJob.Overwrite = true;
-                else newJob.Overwrite = Convert.ToBoolean(Import.OW);
-                newJob.QueueIndex = Import.QueueIndex;
-                newJob.vid = Import.vid;
-                newJob.ID = RNG.Next(1000000, 9999999);
-                while (true)
-                {
-                    if (jobList.Any(j => j.ID == newJob.ID))
-                    {
-                        newJob.ID = RNG.Next(1000000, 9999999);
-                    }
-                    else break;
-                }
-                newJob.WorkerBlackList = new List<int>();
-                newJob.RenderApp = Import.RenderApp.ToLower();
-                newJob.Status = 0;
-                newJob.CreationTime = DateTime.Now;
-                newJob.renderTasks = GenerateSteppedTasks(newJob.FirstFrame, Import.FrameRange, split, newJob.CreationTime, newJob.vid, newJob.FrameStep, newJob.ID);
-                newJob.ProgressPerFrame = 100/(float)newJob.TotalFramesToRender;
-                if (newJob.renderTasks.Count < 1)
-                {
-                    Readout.ReadoutBuffer = "Could not import Job";
-                    File.Move(filePath, filePath + ".ERROR");
-                    return;
-                }
-                newJob.Priority = Import.Priority;
-                newJob.ProgressPerSecond = new List<double>();
-                newJob.BuiildOutputDir();
-                newJob.SetOutputOffset();
-                jobList.Add(newJob);
-                ActiveIDList.Add(newJob.ID);
-                if (jobList.Contains(newJob))
-                {
-                    inQueue[count] = true;
-                    count++;
-                }
-                else
-                {
-                    Readout.ReadoutBuffer = "Could not import Job";
-                }
-            }
-            string ArchiveFilePath = Path.GetDirectoryName(filePath) + "\\Archive\\" + newJob.Name + ".txt";
-
-            while (true)
-            {
-                //Checks if CtlFolder Archive contains a file with the same name, if true appends a random number string and checks again. 
-
-                if (!File.Exists(ArchiveFilePath)) break;
-                else
-                {
-                    ArchiveFilePath = Path.GetDirectoryName(filePath) + "\\Archive\\" + newJob.Name + "_" + RNG.Next(9999) + ".txt";
-                }
-            }
-            if (inQueue.Contains(false)) return;
-            else
-            {
-                try
-                {
-                    Thread.Sleep(RNG.Next(200));
-                    File.Move(filePath, ArchiveFilePath);
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                    Console.ReadLine();
-                }
-                
-            }
-            Database.UpdateDBFile = true;
-
-        }
-        private static List<renderTask> GenerateSteppedTasks(int start, int range, int split, DateTime _start, bool _vid, int Step, int _JID)
-        {
-            //Generates renderTasks from Job data.
-            //TODO: Move into Job class and rewrite. 
-
-            if (_vid) split = 1;
-            Random rnd = new Random();
-            List<renderTask> _return = new List<renderTask>();
-            decimal AdjustedRange = decimal.Floor(range / Step);
-            decimal roundSplitRange = decimal.Floor(AdjustedRange / split);
-
-            int differance = Convert.ToInt32(AdjustedRange) - (Convert.ToInt32(roundSplitRange) * split);
-            int firstFrame = start;
-            int frameRange = 0;
-            int AdjustedFrameCount = 0;
-            for (int c = 0; c < split; c++)
-            {
-                renderTask nt = new renderTask();
-                AdjustedFrameCount = Convert.ToInt32(roundSplitRange);
-                nt.FirstFrame = firstFrame;
-                nt.adjustedFirstFrame = firstFrame;
-
-                if (differance > 0)
-                {
-                    AdjustedFrameCount++;
-                    differance--;
-                }
-                nt.adjustedFrameRange = AdjustedFrameCount;
-                frameRange = (AdjustedFrameCount * Step);
-                if (c == 0)
-                {
-                    nt.finalFrame = firstFrame + frameRange - Step;
-                    firstFrame += (AdjustedFrameCount * Step);
-                }
-                else
-                {
-                    nt.finalFrame = firstFrame + frameRange - Step;
-                    firstFrame += (AdjustedFrameCount * Step);
-                }
-                nt.GenerateFrameCount(Step);
-                nt.ID = rnd.Next(1000000, 9999999);
-                nt.JID = _JID;
-                nt.finishTime = DateTime.MinValue;
-                nt.Status = 0;
-                nt.ProgressPerFrame = 100 / (float)nt.RenderFrameNumbers.Count();
-                
-                int attempt = 0;
-                while (true)
-                {
-                    try
-                    {
-                        if (jobList.Any(j => j.renderTasks.Any(rt => rt.ID == nt.ID))) nt.ID = rnd.Next(1000000, 9999999);
-                        else break;
-                    }
-                    catch
-                    {
-                        attempt++;
-                        if (attempt > 10) return new List<renderTask>();
-                    }
-                }
-                _return.Add(nt);
-            }
-            return _return;
-        }
+        
+        
         private static void CheckActiveJobsProgress()
         {
             //Checks progress and estimates remaining time on active jobs.

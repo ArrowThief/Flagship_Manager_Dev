@@ -9,18 +9,34 @@ namespace FlagShip_Manager.Management_Server
         //Custom Database object. 
         //TODO: Repalce with MongoDB or other. 
 
-        public WorkerObject[]? WorkerList { get; set; }
-        public Job[]? JobList { get; set; }
-        public int[]? ArchiveJobs { get; set; }
-        public int[]? ActiveJobs { get; set; }
+        public Worker[]? WorkerList { get; set; }
+        public Job[]? ArchiveJobs { get; set; }
+        public Job[]? ActiveJobs { get; set; }
     }
-    public class Database
+    public class DB
     {
         //Database class is used for storing and loading DBObjects for long term storge. 
 
         public static bool Startup = true;
         public static bool UpdateDBFile = false;
         private static readonly string DataBaseFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_DATABASE.txt";
+        
+        public static IList<Job> active = new List<Job>();
+        public static IList<int> removeActive = new List<int>();
+        private static int activeID = 0;
+
+        public static IList<Job> archive = new List<Job>();
+        public static IList<int> removeArchive = new List<int>();
+        private static int archiveID = 0;
+
+        public static IList<Worker> WorkerList = new List<Worker>();
+        public static IList<int> removeWorker = new List<int>();
+        private static int WorkerID = 0;
+
+
+
+
+
         public static void DataBaseManager()
         {
             //Runs on startup to load existing Database. Then stays in a loop to save database as needed. 
@@ -44,10 +60,10 @@ namespace FlagShip_Manager.Management_Server
             //TODO: Build DBObject builder.
 
             DBObject DB = new DBObject();
-            DB.JobList = new List<Job>(jobManager.jobList).ToArray();
-            DB.ActiveJobs = new List<int>(jobManager.ActiveIDList).ToArray();
-            DB.ArchiveJobs = new List<int>(jobManager.ArchiveIDList).ToArray();
-            DB.WorkerList = new List<WorkerObject>(WorkerServer.WorkerList).ToArray();
+            DB.ActiveJobs = new List<Job>(active).ToArray();
+            DB.ArchiveJobs = new List<Job>(archive).ToArray();
+            DB.WorkerList = new List<Worker>(WorkerList).ToArray();
+
             byte[] DBSerial;
             try
             {
@@ -85,10 +101,10 @@ namespace FlagShip_Manager.Management_Server
                 if (DB != null)
                 {
                     CheckDatabase(DB);
-                    foreach (var worker in DB.WorkerList)
+                    foreach (var worker in WorkerList)
                     {
                         worker.Status = 7;
-                        WorkerServer.WorkerList.Add(worker);
+                        WorkerList.Add(worker);
                     }
                 }
             }
@@ -101,9 +117,9 @@ namespace FlagShip_Manager.Management_Server
 
             int finishCount;
             if (_DB == null) return;
-            if (_DB.JobList != null)
+            if (_DB.ActiveJobs != null)
             {
-                foreach (Job j in _DB.JobList)
+                foreach (Job j in _DB.ActiveJobs)
                 {
 
                     finishCount = 0;
@@ -141,7 +157,7 @@ namespace FlagShip_Manager.Management_Server
                             finishCount++;
                         }
                     }
-                    if (j.renderTasks.Count == finishCount)
+                    if (j.renderTasks.Length == finishCount)
                     {
                         j.Status = 2;
                         j.finished = true;
@@ -149,7 +165,7 @@ namespace FlagShip_Manager.Management_Server
                         j.CompletedFrames = j.TotalFramesToRender;
                     }
                     else if (j.Status == 1) j.Status = 0;
-                    jobManager.jobList.Add(j);
+                    active.Add(j);
                     foreach (Thread fail in Failthreads)
                     {
                         fail.Start();
@@ -157,8 +173,8 @@ namespace FlagShip_Manager.Management_Server
                     }
                 }
             }
-            if (_DB.ActiveJobs != null) jobManager.ActiveIDList = _DB.ActiveJobs.ToList();
-            if (_DB.ArchiveJobs != null) jobManager.ArchiveIDList = _DB.ArchiveJobs.ToList();
+            if (_DB.ActiveJobs != null) active = _DB.ActiveJobs.ToList();
+            if (_DB.ArchiveJobs != null) active = _DB.ArchiveJobs.ToList();
 
 
         }
@@ -228,6 +244,39 @@ namespace FlagShip_Manager.Management_Server
             Thread.Sleep(100);
         }
 
+        public static int NextActive()
+        {
+            return activeID++;
+        }
+        public static int NextArchive()
+        {
+            return activeID++;
+        }
+        public static int NextWorker(bool peek = false)
+        {
+            if (peek) return WorkerID;
+            else return WorkerID++;
+        }
+
+        internal static Job FindActive(int ID)
+        {
+            //Binary search through Active Job list.
+            //Search will not be located in this method so that I don't duplicate too much code with this and Find Archive.
+
+            throw new NotImplementedException();
+        }
+        internal static Job FindArchive(int ID)
+        {
+            //Binary search through Archive Job list.
+            
+            throw new NotImplementedException();
+        }
+        internal static Worker FindWorker(int ID)
+        {
+            //Binary search through Archive Job list.
+
+            throw new NotImplementedException();
+        }
     }
 
 }

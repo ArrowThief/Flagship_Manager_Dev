@@ -1,4 +1,5 @@
-﻿using Flagship_Manager_Dev.Components;
+﻿using FlagShip_Manager.Management_Server;
+using Flagship_Manager_Dev.Components;
 using Flagship_Manager_Dev.Objects;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,7 +13,6 @@ namespace FlagShip_Manager.Objects
 
         public TaskLogs taskLogs { get; set; } = new TaskLogs();
         public string LastLogLine { get; set; } = "";
-        public int ID { get; set; }
         public int JID { get; set; }
 
         //Job/Task status. queued(0), Rendering(1), finished(2) paused(3), fialed(4), canceled(5).
@@ -57,12 +57,12 @@ namespace FlagShip_Manager.Objects
             int CurrentAttempt = taskLogs.Attempt(Index);
             return taskLogs.Attempt(Index);
         }
-        public WorkerObject? Worker()
+        public Worker? Worker()
         {
             //Returns worker object
             //TODO: Switch to Binary search to find workers.
 
-            WorkerObject? w = WorkerServer.WorkerList.Find(w => w.WorkerID == taskLogs.WorkerIDs.Last());
+            Worker? w = DB.FindWorker(taskLogs.WorkerIDs.Last());
             return w;
         }
         public void Finish()
@@ -191,18 +191,18 @@ namespace FlagShip_Manager.Objects
             try
             {
                 Job? j = ParentJob();
-                WorkerObject w;
+                Worker w;
                 int WID = taskLogs.WorkerIDs.Last();
                 bool missingWorker = false;
                 try
                 {
-                    w = WorkerServer.WorkerList.Find((w) => w.WorkerID == taskLogs.WorkerIDs.Last());
+                    w = DB.FindWorker(taskLogs.WorkerIDs.Last());
 
                 }
                 catch
                 {
                     missingWorker = true;
-                    w = new WorkerObject();
+                    w = new Worker();
                     w.name = "Missing Data";
                 }
 
@@ -394,16 +394,10 @@ namespace FlagShip_Manager.Objects
 
             if (taskLogs.SubmitTime.Last().AddSeconds(30) < DateTime.Now)
             {
-                WorkerObject w = WorkerServer.WorkerList.Find(w => w.WorkerID == taskLogs.WorkerIDs.Last());
-                if (w != null)
+                Worker w = WorkerServer.Find(taskLogs.WorkerIDs.Last());
+                if (w != null && w.Status == 1)
                 {
-                    if (w.Status == 1)
-                    {
-                        if (w.renderTaskID == ID)
-                        {
-                            return false;
-                        }
-                    }
+                    return false;
                 }
                 return true;
             }

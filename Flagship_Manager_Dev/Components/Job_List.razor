@@ -178,11 +178,11 @@
     if (!Archive) ID = "jl3";
 }
     <div id="@ID">
-        @for (int i = 0; i < JobIDList.Count(); i++)
+        @foreach(Job J in JobList)
         {
             try
             {
-                Job J = jobManager.jobList[ConvertFromIDtoIndex(JobIDList[i])];
+                //Job J = jobManager.jobList[ConvertFromIDtoIndex(JobIDList[i])];
                 <div >
                 @{
                     var CBID = J.ID + "CB";
@@ -294,11 +294,19 @@
                     <div style="width:1520px; height:4px;"></div>
                     
                 }
-                </div>
-            }catch{
-                i--;
-            }
+            </div>
+        }catch{
+            Console.WriteLine("Failed to draw job.");
         }
+        if(JobList.Count() < DB.ActiveJobs.Count())
+        {
+            for(int i = JobList.Count(); i < DB.ActiveJobs.Count(); i++)
+            {
+                JobList.Add(DB.ActiveJobs[i]);
+            }    
+        }
+    }
+
     </div>
 
     <div>
@@ -350,9 +358,10 @@
     };
 
     private IJSObjectReference JS;
-    
+
     private List<int> CheckedIDs = new List<int>();
-    
+    private IList<Job> JobList = new List<Job>();
+
     private bool ShowActiveBatch = false;
     private bool ShowArchiveBatch = false;
     public bool hidden = false;
@@ -529,7 +538,7 @@
         
         try
         {
-            Database.UpdateDBFile = true;
+            DB.UpdateDBFile = true;
         }
         catch (Exception EX)
         {

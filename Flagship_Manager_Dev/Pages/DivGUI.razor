@@ -499,7 +499,7 @@
     }
     public static int CountOnlineWorkers(){
         int Online = 0;
-        foreach(WorkerObject W in WorkerServer.WorkerList){
+        foreach(Worker W in WorkerServer.WorkerList){
             if (W.Status != 7) Online++;
         }
         return Online;

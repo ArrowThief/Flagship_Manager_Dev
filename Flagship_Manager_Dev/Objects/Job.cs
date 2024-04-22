@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.Web;
 
 namespace FlagShip_Manager.Objects
 {
@@ -57,7 +58,7 @@ namespace FlagShip_Manager.Objects
         public DateTime CreationTime { get; set; }
         public DateTime ArchiveDate { get; set; } = DateTime.MaxValue;
         public List<int> WorkerBlackList { get; set; } = new List<int>();
-        public List<renderTask> renderTasks { get; set; } = new List<renderTask>();
+        public renderTask[] renderTasks { get; set; }
         public List<DateTime> StartTimes { get; set; } = new List<DateTime>();
         public List<DateTime> EndTimes { get; set; } = new List<DateTime>();
         public bool UpdateUI { get; set; } = false;
@@ -457,7 +458,6 @@ namespace FlagShip_Manager.Objects
                 return false;
             }
         }
-
         internal void BuiildOutputDir()
         {
             //Checks if output dir exits. If false, attempts to build dir recursively.

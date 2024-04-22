@@ -1,4 +1,5 @@
-﻿using FlagShip_Manager.Objects;
+﻿using FlagShip_Manager.Management_Server;
+using FlagShip_Manager.Objects;
 
 namespace FlagShip_Manager.Helpers
 {
@@ -11,12 +12,11 @@ namespace FlagShip_Manager.Helpers
         public static void AddDummyWorker()
         {
             //Creates a fake worker to test UI.
-
             string pad = "00";
             if (CurrentDummys > 99) pad = "";
             else if (CurrentDummys > 9) pad = "0";
             var DummyName = $"Dummy{pad}{CurrentDummys}";
-            WorkerObject DW = new WorkerObject();
+            Worker DW = new Worker();
             DW.name = DummyName;
             DW.GPU = false;
             DW.Status = 0;
@@ -25,11 +25,11 @@ namespace FlagShip_Manager.Helpers
             int newID = random.Next(9999, 99999);
             while (true)//Check for duplicated workerIDs
             {
-                if (WorkerServer.WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
+                if (DB.WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
                 else break;
             }
             DW.WorkerID = newID;
-            WorkerServer.WorkerList.Add(DW);
+            DB.WorkerList.Add(DW);
             CurrentDummys++;
         }
         public static void AddLongDummyWorker()
@@ -40,7 +40,7 @@ namespace FlagShip_Manager.Helpers
             if (CurrentDummys > 99) pad = "";
             else if (CurrentDummys > 9) pad = "0";
             var DummyName = $"Long_Dummy-Name_Number_{pad}{CurrentDummys}";
-            WorkerObject DW = new WorkerObject();
+            Worker DW = new Worker();
             DW.name = DummyName;
             DW.GPU = false;
             DW.Status = 0;
@@ -49,11 +49,11 @@ namespace FlagShip_Manager.Helpers
             int newID = random.Next(9999, 99999);
             while (true)//Check for duplicated workerIDs
             {
-                if (WorkerServer.WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
+                if (DB.WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
                 else break;
             }
             DW.WorkerID = newID;
-            WorkerServer.WorkerList.Add(DW);
+            DB.WorkerList.Add(DW);
             CurrentDummys++;
         }
         public static void ClearrDummyWorkers()
@@ -61,11 +61,11 @@ namespace FlagShip_Manager.Helpers
             //Removes all dummy workers.
 
             List<int> RemoveIndex = new List<int>();
-            for (int i = 0; i < WorkerServer.WorkerList.Count(); i++)
+            for (int i = 0; i < DB.WorkerList.Count(); i++)
             {
-                if (WorkerServer.WorkerList[i].Dummy)
+                if (DB.WorkerList[i].Dummy)
                 {
-                    WorkerServer.WorkerList.RemoveAt(i);
+                    DB.WorkerList.RemoveAt(i);
                     i--;
                 }
             }
