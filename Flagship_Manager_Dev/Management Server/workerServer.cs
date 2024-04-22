@@ -140,7 +140,7 @@ namespace FlagShip_Manager
                 int JID = _worker.JobID;
                 try
                 {
-                    j = jobManager.jobList.Find(jl => jl.ID == JID);
+                    j = DB.FindActive(JID);
                     if (j == null)
                     {
                         //Job not found in Job list, check Job archive.

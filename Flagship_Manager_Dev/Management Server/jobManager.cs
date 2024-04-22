@@ -83,9 +83,9 @@ namespace FlagShip_Manager
                 activeJobs.Clear();
                 availableWorkers.Clear();
 
-                if (jobList.Count() > 0 && !DB.Startup)
+                if (DB.active.Count() > 0 && !DB.Startup)
                 {
-                    activeJobs = Logic.getQueuedJobs(jobList);
+                    activeJobs = Logic.getQueuedJobs(DB.active);
                     if (activeJobs.Count == 0)
                     {
                         if (clear)
@@ -309,9 +309,9 @@ namespace FlagShip_Manager
             List<string> ProgressThreads = new List<string>();
             while (true)
             {
-                for (int ji = 0; ji < jobList.Count(); ji++)
+                for (int ji = 0; ji < DB.active.Count(); ji++)
                 {
-                    Job j = jobList[ji];
+                    Job j = DB.active[ji];
                     if (j.Status == 1 && !ProgressThreads.Any(t => t == j.Name))
                     {
                         Thread temp = new Thread(() => {

@@ -1,4 +1,5 @@
-﻿using FlagShip_Manager.Objects;
+﻿using FlagShip_Manager.Management_Server;
+using FlagShip_Manager.Objects;
 using System.Text.RegularExpressions;
 
 namespace FlagShip_Manager
@@ -8,7 +9,7 @@ namespace FlagShip_Manager
         //A class for storing logical operations. 
         //TODO: Move methods into thier proper classes. 
 
-        public static List<Job> getQueuedJobs(List<Job> jobList)
+        public static List<Job> getQueuedJobs(IList<Job> jobList)
         {
             //Gets a list of jobs that haven't yet been rendered. 
 
@@ -21,10 +22,9 @@ namespace FlagShip_Manager
             //5 = canceled.
 
             List<Job> _returnList = new List<Job>();
-            for (int i = 0; i < jobManager.ActiveIDList.Count(); i++)
+            for (int i = 0; i < jobList.Count(); i++)
             {
-                int JID = jobManager.ActiveIDList[i];
-                Job j = jobList.Find(jo => jo.ID == JID);
+                Job j = jobList[i];
                 if (j.finished) continue;
                 else if (j.fail)
                 {
@@ -40,16 +40,9 @@ namespace FlagShip_Manager
                         }
                     }
                 }
-                switch (j.Status)
-                {
-                    case (0):
-                        _returnList.Add(j);
-                        break;
-                    case (1):
-                        _returnList.Add(j);
-                        break;
-                    default:
-                        break;
+                if (j.Status == 0 || j.Status == 1) { 
+                
+                    _returnList.Add(j);
                 }
             }
             if (_returnList.Count > 0) _returnList.Sort((a, b) => b.Priority.CompareTo(a.Priority));
@@ -61,12 +54,12 @@ namespace FlagShip_Manager
             //TODO: Rewrite everything, move class.
 
             List<int> _return = new List<int>();
-            var workers = WorkerServer.WorkerList;
+            var workers = DB.WorkerList;
             var activeJobs = new List<Job>();
-            for(int jindex = 0; jindex < jobManager.jobList.Count(); jindex++)
+            for(int jindex = 0; jindex < DB.active.Count(); jindex++)
             {
-                Job j = jobManager.jobList[jindex];
-                if (!j.Archive && (j.Status == 0 || j.Status == 1)) activeJobs.Add(j);//Builds a list of jobs that are currently waiting to be rendered.            
+                Job j = DB.active[jindex];
+                if (j.Status == 0 || j.Status == 1) activeJobs.Add(j);//Builds a list of jobs that are currently waiting to be rendered.            
             }
             for (int wI = 0; wI < workers.Count(); wI++)
             {
@@ -89,7 +82,7 @@ namespace FlagShip_Manager
                             if (activeJobs.Any(j => j.RenderApp == Default.AppName)) continue; //If the worker is able to render this type but it isn't the default, checks if there is a default Job in the queue.   
                         }
                     }
-                    _return.Add(workers.FindIndex(w => w == worker));//If one or more of the previous checks pass then worker is added to list of available workers for the job.
+                    _return.Add(wI);//If one or more of the previous checks pass then worker is added to list of available workers for the job.
                 }
 
             }
