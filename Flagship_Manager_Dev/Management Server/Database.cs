@@ -1,6 +1,7 @@
 ﻿using FlagShip_Manager.Objects;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Bson;
+using System;
 
 namespace FlagShip_Manager.Management_Server
 {
@@ -12,6 +13,16 @@ namespace FlagShip_Manager.Management_Server
         public Worker[]? WorkerList { get; set; }
         public Job[]? ArchiveJobs { get; set; }
         public Job[]? ActiveJobs { get; set; }
+
+        public DBObject(Job[]? _active = null, Job[]? _archive = null, Worker[]? _worker = null) 
+        {
+            if(_active == null)ActiveJobs = new Job[0];
+            else ActiveJobs = _active;
+            if(_archive == null)ArchiveJobs = new Job[0];
+            else ArchiveJobs = _archive;
+            if(_worker == null)WorkerList = new Worker[0];      
+            else WorkerList = _worker;
+        }
     }
     public class DB
     {
@@ -21,54 +32,38 @@ namespace FlagShip_Manager.Management_Server
         public static bool UpdateDBFile = false;
         private static readonly string DataBaseFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_DATABASE.txt";
         
-        public static IList<Job> active = new List<Job>();
-        public static IList<int> removeActive = new List<int>();
+        public static List<Job> active = new List<Job>();
+        public static List<int> removeActive = new List<int>();
         private static int activeID = 0;
 
-        public static IList<Job> archive = new List<Job>();
-        public static IList<int> removeArchive = new List<int>();
+        public static List<Job> archive = new List<Job>();
+        public static List<int> removeArchive = new List<int>();
         private static int archiveID = 0;
 
-        public static IList<Worker> WorkerList = new List<Worker>();
-        public static IList<int> removeWorker = new List<int>();
-        private static int WorkerID = 0;
-
-
-
-
+        public static List<Worker> WorkerList = new List<Worker>();
+        public static List<int> removeWorker = new List<int>();
+        private static int workerID = 0;
 
         public static void DataBaseManager()
         {
             //Runs on startup to load existing Database. Then stays in a loop to save database as needed. 
+            
             Load(DataBaseFilePath);
-            Thread.Sleep(1000);
-            ClearBrokenJobs();
-            Thread.Sleep(1000);
+
             while (true)
             {
-                if (UpdateDBFile)
-                {
-                    Save(DataBaseFilePath);
-                    Thread.Sleep(60000);
-                }
-                else Thread.Sleep(1000);
+                if (UpdateDBFile) Save(DataBaseFilePath);
+                Thread.Sleep(60000);
             }
         }
         public static void Save(string _filePath)
         {
             //Saves DBObject to disk.
-            //TODO: Build DBObject builder.
-
-            DBObject DB = new DBObject();
-            DB.ActiveJobs = new List<Job>(active).ToArray();
-            DB.ArchiveJobs = new List<Job>(archive).ToArray();
-            DB.WorkerList = new List<Worker>(WorkerList).ToArray();
 
             byte[] DBSerial;
             try
             {
-
-                DBSerial = ObjectToByteArray(DB);
+                DBSerial = ObjectToByteArray(new DBObject(active.ToArray(), archive.ToArray(), WorkerList.ToArray()));
                 var Compressed = Misc.CompressArray(DBSerial);
                 File.WriteAllBytes(_filePath, Compressed);
             }
@@ -82,7 +77,7 @@ namespace FlagShip_Manager.Management_Server
         {
             //Loads DBObject from disk.
 
-            DBObject DB = new DBObject();
+            DBObject newDB = new DBObject();
             byte[] DBarry;
             if (File.Exists(_filePath))
             {
@@ -90,7 +85,7 @@ namespace FlagShip_Manager.Management_Server
                 {
                     DBarry = File.ReadAllBytes(_filePath);
                     var Decompress = Misc.DeCompressArray(DBarry);
-                    DB = (DBObject)ByteArrayToObject(Decompress);
+                    newDB = (DBObject)ByteArrayToObject(Decompress);
                 }
 
                 catch (Exception EX)
@@ -98,9 +93,9 @@ namespace FlagShip_Manager.Management_Server
                     Console.WriteLine("Failed to read Database. Possibly not able to access file.\nERROR MESSAGE:\n");
                     Console.WriteLine(EX.Message);
                 }
-                if (DB != null)
+                if (newDB != null)
                 {
-                    CheckDatabase(DB);
+                    CheckDatabase(newDB);
                     foreach (var worker in WorkerList)
                     {
                         worker.Status = 7;
@@ -221,29 +216,6 @@ namespace FlagShip_Manager.Management_Server
             }
             return Deserialized;
         }
-        private static void ClearBrokenJobs()
-        {
-            //Checks for jobs that were duplicated during saving. 
-            //TODO: Find the reason Jobs sometimes breake. 
-
-            int count = 0;
-            List<int> RemoveList = new List<int>();
-            Thread.Sleep(1000);
-            for (int i = 0; i < jobManager.jobList.Count; i++)
-            {
-                if (!jobManager.ActiveIDList.Contains(jobManager.jobList[i].ID))
-                {
-                    if (!jobManager.ArchiveIDList.Contains(jobManager.jobList[i].ID)) RemoveList.Add(i);
-                }
-            }
-            foreach (int i in RemoveList)
-            {
-                jobManager.jobList.RemoveAt(i - count);
-                count++;
-            }
-            Thread.Sleep(100);
-        }
-
         public static int NextActive()
         {
             return activeID++;
@@ -254,29 +226,42 @@ namespace FlagShip_Manager.Management_Server
         }
         public static int NextWorker(bool peek = false)
         {
-            if (peek) return WorkerID;
-            else return WorkerID++;
+            if (peek) return workerID;
+            else return workerID++;
         }
-
-        internal static Job FindActive(int ID)
+        internal static Job? FindJob(List<Job> searchList, int target)
         {
-            //Binary search through Active Job list.
-            //Search will not be located in this method so that I don't duplicate too much code with this and Find Archive.
+            //Binary search for Job in List.
 
-            throw new NotImplementedException();
+            int mid = searchList.Count() / 2;
+            if (searchList[mid].ID == target) return searchList[mid];
+            else if (searchList[mid].ID > target)
+            {
+                return FindJob(searchList.GetRange(0, mid-1), target);
+            }
+            else if (searchList[mid].ID < target)
+            {
+                return FindJob(searchList.GetRange(mid+1, searchList.Count()-mid-1), target);
+            }
+            return null;
         }
-        internal static Job FindArchive(int ID)
+        internal static Worker? FindWorker(List<Worker> searchList, int target)
         {
             //Binary search through Archive Job list.
-            
-            throw new NotImplementedException();
-        }
-        internal static Worker FindWorker(int ID)
-        {
-            //Binary search through Archive Job list.
 
-            throw new NotImplementedException();
+            int mid = searchList.Count() / 2;
+            if (searchList[mid].ID == target) return searchList[mid];
+            else if (searchList[mid].ID > target)
+            {
+                return FindWorker(searchList.GetRange(0, mid - 1), target);
+            }
+            else if (searchList[mid].ID < target)
+            {
+                return FindWorker(searchList.GetRange(mid + 1, searchList.Count() - mid - 1), target);
+            }
+            return null;
         }
+
     }
 
 }

@@ -9,26 +9,18 @@ namespace FlagShip_Manager.Helpers
 
         public bool DebugMode = true; //This should be false most of the time.
         private static int CurrentDummys = 0;
-        public static void AddDummyWorker()
+        public static void AddDummyWorker(string name = "Dummy")
         {
             //Creates a fake worker to test UI.
             string pad = "00";
             if (CurrentDummys > 99) pad = "";
             else if (CurrentDummys > 9) pad = "0";
-            var DummyName = $"Dummy{pad}{CurrentDummys}";
             Worker DW = new Worker();
-            DW.name = DummyName;
+            DW.name = $"{name}{pad}{CurrentDummys}";
             DW.GPU = false;
             DW.Status = 0;
             DW.Dummy = true;
-            Random random = new Random();
-            int newID = random.Next(9999, 99999);
-            while (true)//Check for duplicated workerIDs
-            {
-                if (DB.WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
-                else break;
-            }
-            DW.WorkerID = newID;
+            DW.ID = DB.NextWorker();
             DB.WorkerList.Add(DW);
             CurrentDummys++;
         }
@@ -36,25 +28,7 @@ namespace FlagShip_Manager.Helpers
         {
             //Creates a fake worker wtih a very long name to test UI.
 
-            string pad = "00";
-            if (CurrentDummys > 99) pad = "";
-            else if (CurrentDummys > 9) pad = "0";
-            var DummyName = $"Long_Dummy-Name_Number_{pad}{CurrentDummys}";
-            Worker DW = new Worker();
-            DW.name = DummyName;
-            DW.GPU = false;
-            DW.Status = 0;
-            DW.Dummy = true;
-            Random random = new Random();
-            int newID = random.Next(9999, 99999);
-            while (true)//Check for duplicated workerIDs
-            {
-                if (DB.WorkerList.Any(w => w.WorkerID == newID)) newID = random.Next(9999, 99999);
-                else break;
-            }
-            DW.WorkerID = newID;
-            DB.WorkerList.Add(DW);
-            CurrentDummys++;
+            AddDummyWorker("Long_Dummy-Name_Number_");
         }
         public static void ClearrDummyWorkers()
         {

@@ -72,16 +72,17 @@ namespace FlagShip_Manager
 
             while (true)
             {
-                if (LastCleanup < DateTime.Now)
-                {
-                    CleanJobList();
-                    LastCleanup = DateTime.Now.AddHours(12);
-                }
-                else if (LastCleanup == DateTime.MinValue) LastCleanup = DateTime.Now;
-
                 Thread.Sleep(1000);
+
                 activeJobs.Clear();
                 availableWorkers.Clear();
+                clearAvailableWorkers = false;
+
+                if (LastCleanup < DateTime.Now.AddHours(-24))
+                {
+                    CleanJobList();
+                    LastCleanup = DateTime.Now;
+                }
 
                 if (DB.active.Count() > 0 && !DB.Startup)
                 {
@@ -100,10 +101,9 @@ namespace FlagShip_Manager
                     {
                         Readout.ReadoutBuffer = "Working on Jobs...";
                     }
-                    if (clearAvailableWorkers) clearAvailableWorkers = false;
+                    
                     foreach (Job _job in activeJobs)
                     {
-                        int TaskIndex = 0;
                         availableWorkers = Logic.getAvailableWorkers(_job);
                         if (availableWorkers.Count() < 1) continue;
 
@@ -144,11 +144,11 @@ namespace FlagShip_Manager
                                             }
                                             rT.taskLogs.add();
                                             worker.sendTasktoClientBuffer(_job, rT, ri);
-                                            rT.taskLogs.WriteToWorker($" Task {TaskIndex} submitted to {worker.name} for rendering.\n------------------------------Worker Log start------------------------------\n", false);
+                                            rT.taskLogs.WriteToWorker($" Task {ri} submitted to {worker.name} for rendering.\n------------------------------Worker Log start------------------------------\n", false);
                                             _job.Status = 1;
                                             rT.Status = 1;
                                             rT.taskLogs.SubmitTime[rT.Attempt()] = DateTime.Now;
-                                            rT.taskLogs.WriteID(worker.WorkerID);
+                                            rT.taskLogs.WriteID(worker.ID);
                                             if (clearAvailableWorkers) break;
                                             worker.ConsoleBuffer = ($"Sending: {_job.Name} task index: {ri} of {_job.renderTasks.Count()} to {DB.WorkerList[wi].name}");
                                             worker.awaitUpdate = true;
@@ -157,7 +157,7 @@ namespace FlagShip_Manager
                                         catch
                                         {
                                             worker.renderTaskIndex = -1;
-                                            worker.JobID = 0;
+                                            worker.activeJob = _job;
                                             worker.ConsoleBuffer = $"Failed to send task to {worker.name} buffer";
                                             rT.Status = 0;
                                         }
@@ -172,52 +172,39 @@ namespace FlagShip_Manager
         }
         private static void CleanJobList()
         {
-            for (int ID = 0; ID < ArchiveIDList.Count(); ID++)
+            //Removes Jobs after they have spent 7 days in archie. 
+            //TODO: Make auto archive optional and add UI for controlling how often it happens.
+            
+            var RemoveList = new List<int>();
+            
+            for (int index = 0; index < DB.archive.Count(); index++)
             {
-                //Removes Jobs after they have spent 7 days in archie. 
-                //TODO: Make auto archive optional and add UI for controlling how often it happens.
-
+                if (DB.archive[index] != null)
+                {
+                    if (DB.archive[index].ArchiveDate < DateTime.Now.AddDays(-7))
+                    {
+                        DB.removeArchive.Add(DB.archive[index].ID);
+                        RemoveList.Add(index);
+                    }
+                }
+                else
+                {
+                    DB.removeArchive.Add(DB.archive[index].ID);
+                    RemoveList.Add(index);
+                }   
+            }
+            foreach (int index in RemoveList)
+            {
                 try
                 {
-                    int tempID = ArchiveIDList[ID];
-                    Job tempJob = jobList.Find(j => j.ID == tempID);
-                    if (tempJob != null)
-                    {
-                        if (tempJob.ID != -1)
-                        {
-                            if (tempJob.ArchiveDate.AddDays(7) < DateTime.Now)
-                            {
-                                try
-                                {
-                                    File.Delete(tempJob.Project);
-                                    File.Delete($"{ActiveSettings.CtlFolder}\\Archive\\{tempJob.Name}.txt");
-                                }
-                                catch
-                                {
-                                    Console.WriteLine("Cannot remove project file. it will remain on server.");
-                                }
-                                jobList.Remove(tempJob);
-                                ArchiveIDList.Remove(tempID);
-                                ID--;
-                            }
-
-                        }
-                        else
-                        {
-                            ArchiveIDList.Remove(tempID);
-                            ID--;
-                        }
-                    }
-                    else
-                    {
-                        ArchiveIDList.Remove(tempID);
-                        ID--;
-                    }
+                    File.Delete(DB.archive[index].Project);
+                    File.Delete($"{ActiveSettings.CtlFolder}\\Archive\\{DB.archive[index].Name}.txt");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    Console.WriteLine($"Cannot remove project file. it will remain on server. \nERROR: \n{ex}");
                 }
+                DB.archive.RemoveAt(index);
             }
         }       
         
@@ -225,7 +212,7 @@ namespace FlagShip_Manager
         {
             //Checks the CtlFolder for new job submissions
             //TODO: Change naming and add class based method for importing, rather than the local method.
-            //TODO Someday: Rewrite AE and blender to somehow connect through tcpip. 
+            //TODO Someday: Rewrite AE and blender to somehow connect through tcpip. Possibly though Posting to a webaddress? 
 
             Regex ErrorCheck = new Regex(@"(ERROR)");
             Readout.ReadoutBuffer = "Started checking watch folder for new jobs.";

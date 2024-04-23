@@ -70,7 +70,7 @@ namespace FlagShip_Manager
                 else if (!CurrentJob.Enabled) continue;
                 //if (worker.Dummy) continue;
                 if (worker.awaitUpdate || worker.lastSubmittion.AddSeconds(5) > DateTime.Now) continue;
-                if (_job.WorkerBlackList.Contains(worker.WorkerID)) continue;//Checks the jobs blacklist for worker.
+                if (_job.WorkerBlackList.Contains(worker.ID)) continue;//Checks the jobs blacklist for worker.
                 if (_job.GPU && !worker.GPU) continue;
 
                 if (worker.Status == 0)//Client is ready to work.

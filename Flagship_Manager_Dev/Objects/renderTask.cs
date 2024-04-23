@@ -13,7 +13,7 @@ namespace FlagShip_Manager.Objects
 
         public TaskLogs taskLogs { get; set; } = new TaskLogs();
         public string LastLogLine { get; set; } = "";
-        public int JID { get; set; }
+        public Job ParentJob { get; set; }
 
         //Job/Task status. queued(0), Rendering(1), finished(2) paused(3), fialed(4), canceled(5).
         public int Status { get; set; }
@@ -62,7 +62,7 @@ namespace FlagShip_Manager.Objects
             //Returns worker object
             //TODO: Switch to Binary search to find workers.
 
-            Worker? w = DB.FindWorker(taskLogs.WorkerIDs.Last());
+            Worker? w = DB.FindWorker(DB.WorkerList, taskLogs.WorkerIDs.Last());
             return w;
         }
         public void Finish()
@@ -74,13 +74,7 @@ namespace FlagShip_Manager.Objects
             Status = 2;
             finishTime = DateTime.Now;
         }
-        internal Job ParentJob()
-        {
-            //Returns Parent Job. 
-            //TODO: Replace with a refrence
-
-            return jobManager.jobList.Find(j => j.ID == JID);
-        }
+        
         public void GetProgressFromAELog(float _fps = 0)
         {
             //Gets progress from AfterEffects Log data.
@@ -190,13 +184,12 @@ namespace FlagShip_Manager.Objects
 
             try
             {
-                Job? j = ParentJob();
                 Worker w;
                 int WID = taskLogs.WorkerIDs.Last();
                 bool missingWorker = false;
                 try
                 {
-                    w = DB.FindWorker(taskLogs.WorkerIDs.Last());
+                    w = Worker();
 
                 }
                 catch
@@ -227,21 +220,21 @@ namespace FlagShip_Manager.Objects
                 {
                     //Report reason for fail. 
 
-                    j.ShotAlert = true;
+                    ParentJob.ShotAlert = true;
                     if (OutofVRAM.IsMatch(taskLogs.WorkerLog.Last()))
                     {
                         //Checks for AfterEffects VRAM error code
 
                         taskLogs.WriteToManager($"\n{w.name} apears to have failed due to a lack of VRAM.");
-                        if (!j.GPU && j.VRAMERROR > 2)
+                        if (!ParentJob.GPU && ParentJob.VRAMERROR > 2)
                         {
                             //Too many VRAM errors. Switch GPU requirement on.
                             //Only Workers with >4GB of VRAM will be seleced.
 
                             taskLogs.WriteToManager("\n\nMultiple VRAM ERRORS detected, GPU requirement has been enabled in an attempt stop this from happening again.");
-                            j.GPU = true;
+                            ParentJob.GPU = true;
                         }
-                        else j.VRAMERROR++;
+                        else ParentJob.VRAMERROR++;
 
                     }
                     else
@@ -251,11 +244,11 @@ namespace FlagShip_Manager.Objects
                         taskLogs.WriteToManager($"\n{w.name} has failed to render task before returning it to manager.");
                     }
                 }
-                if (j.vid)
+                if (ParentJob.vid)
                 {
                     //Output is a video file.
 
-                    j.Progress = 0;
+                    ParentJob.Progress = 0;
                     progress = 0;
                     ExistingProgress = 0;
                     ExistingFrames = 0;
@@ -278,9 +271,9 @@ namespace FlagShip_Manager.Objects
                 {
                     //Too many renderTask fails. Full Job fail.
 
-                    j.fail = true;
-                    j.Status = 4;
-                    j.Status = 4;
+                    ParentJob.fail = true;
+                    ParentJob.Status = 4;
+                    ParentJob.Status = 4;
                     Status = 4;
                     
                     taskLogs.WriteToManager("Job failed to render more than 5 times, something is probably wrong with it.");
@@ -299,13 +292,13 @@ namespace FlagShip_Manager.Objects
                         {
                             //Counts the number of times a worker has attempted this task.
 
-                            if (ID == w.WorkerID) workerFail++;
+                            if (ID == w.ID) workerFail++;
                         }
                         if (workerFail > 2 && !IgnoreAttempts)
                         {
                             //Black list workers with >3 fails.
 
-                            j.WorkerBlackList.Add(w.WorkerID);
+                            ParentJob.WorkerBlackList.Add(w.ID);
                             w.lastSubmittion = DateTime.Now.AddSeconds(20);
                         }
                     }
@@ -332,8 +325,7 @@ namespace FlagShip_Manager.Objects
                 if (FrameRate.IsMatch(s))
                 {
                     fps = float.Parse(FindNum.Match(s).Value);
-                    Job Parent = ParentJob();
-                    Parent.frameRate = fps;
+                    ParentJob.frameRate = fps;
                     break;
                 }
             }

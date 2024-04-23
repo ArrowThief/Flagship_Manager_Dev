@@ -90,7 +90,7 @@ namespace FlagShip_Manager.Objects
             newJob.RenderApp = RenderApp.ToLower();
             newJob.Status = 0;
             newJob.CreationTime = DateTime.Now;
-            newJob.renderTasks = GenerateSteppedTasks(newJob.FirstFrame, FrameRange, split, newJob.CreationTime, newJob.vid, newJob.FrameStep, newJob.ID);
+            newJob.renderTasks = GenerateSteppedTasks(newJob);
             newJob.ProgressPerFrame = 100 / (float)newJob.TotalFramesToRender;
             newJob.Priority = Priority;
             newJob.ProgressPerSecond = new List<double>();
@@ -101,19 +101,21 @@ namespace FlagShip_Manager.Objects
 
         }
 
-        private static renderTask[] GenerateSteppedTasks(int start, int range, int split, DateTime _start, bool _vid, int Step, int _JID)
+        private renderTask[] GenerateSteppedTasks(Job ParentJob)
         {
             //Generates renderTasks from Job data.
             //TODO: Move into Job class and rewrite. 
 
-            if (_vid) split = 1;
+            //.FirstFrame, FrameRange, split, newJob.CreationTime, newJob.vid, newJob.FrameStep, newJob.ID
+
+            if (vid) split = 1;
             Random rnd = new Random();
             List<renderTask> _return = new List<renderTask>();
-            decimal AdjustedRange = decimal.Floor(range / Step);
+            decimal AdjustedRange = decimal.Floor(ParentJob.FrameRange / ParentJob.FrameStep);
             decimal roundSplitRange = decimal.Floor(AdjustedRange / split);
 
             int differance = Convert.ToInt32(AdjustedRange) - (Convert.ToInt32(roundSplitRange) * split);
-            int firstFrame = start;
+            int firstFrame = ParentJob.FirstFrame;
             int frameRange = 0;
             int AdjustedFrameCount = 0;
             for (int c = 0; c < split; c++)
@@ -129,19 +131,19 @@ namespace FlagShip_Manager.Objects
                     differance--;
                 }
                 nt.adjustedFrameRange = AdjustedFrameCount;
-                frameRange = (AdjustedFrameCount * Step);
+                frameRange = (AdjustedFrameCount * ParentJob.FrameStep);
                 if (c == 0)
                 {
-                    nt.finalFrame = firstFrame + frameRange - Step;
-                    firstFrame += (AdjustedFrameCount * Step);
+                    nt.finalFrame = firstFrame + frameRange - ParentJob.FrameStep;
+                    firstFrame += (AdjustedFrameCount * ParentJob.FrameStep);
                 }
                 else
                 {
-                    nt.finalFrame = firstFrame + frameRange - Step;
-                    firstFrame += (AdjustedFrameCount * Step);
+                    nt.finalFrame = firstFrame + frameRange - ParentJob.FrameStep;
+                    firstFrame += (AdjustedFrameCount * ParentJob.FrameStep);
                 }
-                nt.GenerateFrameCount(Step);
-                nt.JID = _JID;
+                nt.GenerateFrameCount(ParentJob.FrameStep);
+                nt.ParentJob = ParentJob;
                 nt.finishTime = DateTime.MinValue;
                 nt.Status = 0;
                 nt.ProgressPerFrame = 100 / (float)nt.RenderFrameNumbers.Count();

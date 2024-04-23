@@ -1,4 +1,5 @@
 ﻿using FlagShip_Manager.Management_Server;
+using System.Text.Json;
 
 namespace FlagShip_Manager.Objects
 {
@@ -6,9 +7,9 @@ namespace FlagShip_Manager.Objects
     {
         //TCPIP Client object. Stores and controlls clients, ususally refered to as Workers.
 
+        public int ID { get; set; } = 0;
         public string name { get; set; } = "null";
-        public int WorkerID { get; set; } = 0000;
-        public int JobID { get; set; }
+        public Job? activeJob { get; set; }
         public int renderTaskIndex { get; set; }
         public int Status { get; set; }//Client status. ready for work(0), rendering(1), complete(2), Paused/asleep(3), failed(4), canceled(5) starting up(6), offline(7), passive(8) asleep(9).
         public tcpPacket? packetBuffer { get; set; }
@@ -89,8 +90,11 @@ namespace FlagShip_Manager.Objects
         public renderTask? RenderTask()
         {
             //Returns currently assigned renderTask
-
-            return DB.FindActive(JobID).renderTasks[renderTaskIndex];
+            if (activeJob != null)
+            {
+                return activeJob.renderTasks[renderTaskIndex];
+            }
+            else return null;
         }
         public void WorkerTaskFail(string ErrorLog, bool cancel = false, bool IgnoreAttempts = false)
         {
@@ -147,9 +151,318 @@ namespace FlagShip_Manager.Objects
             }
 
             renderTaskIndex = index;
-            JobID = j.ID;
+            activeJob = j;
             packetBuffer = sendPacket;
             Status = 1;
+        }
+        public tcpPacket? BuildResponse(tcpPacket _packet)
+        {
+            //builds a response tcpPacket to a recieved tcpPacket.
+            //TODO: Remove references to Passive mode. 
+
+            renderTask? rT = null;
+            tcpPacket sendPacket = new tcpPacket();
+            if (Status != 3) Status = _packet.status;
+            if (activeJob != null)
+            {
+                //Get Current Logs from packet and pass them to correct renderTask and or Job. 
+
+                try
+                {
+                    rT = activeJob.renderTasks[renderTaskIndex];
+                    rT.lastUpdate = DateTime.Now;
+                    if (_packet.command != "logpart" && _packet.arguments.Count() > 0)
+                    {
+                        if (_packet.arguments[0] != "log rebuild")
+                        {
+                            if (_packet.Logs.Count() > 0)
+                            {
+
+                                foreach (string log in _packet.Logs)
+                                {
+                                    if (rT.LastLogLine == log) continue;
+                                    rT.taskLogs.WriteToWorker(log);
+                                    rT.taskLogs.LogLines[rT.Attempt()]++;
+                                }
+                                rT.LastLogLine = _packet.Logs[_packet.Logs.Length - 1];
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Worker has attempted to report on a Job that doesn't exist. \njob ID: {activeJob.ID}\nTask ID: {renderTaskIndex} \n{ex}");
+                    WorkerServer.cancelWorker(this, false, false);
+                }
+            }
+
+            if (_packet.command == null) return null;
+            try
+            {
+                switch (_packet.command.ToLower())
+                {
+                    //Currently there are a total of 13 possible cases.
+                    //TODO: Simplify by switching to int rather than strings. Less readable, but faster.
+
+                    case "find":
+
+                        //Responds to worker seaching for server IP.
+
+                        sendPacket.command = "acknowledge";
+                        return sendPacket;
+
+                    case "setup":
+
+                        //Builds new workerObject and adds it to List.
+
+                        return newWorkerSetup(_packet); ;
+
+                    case "dissconnect":
+
+                        //Allows for disconnecting gracefully.
+                        
+                        ConsoleBuffer = "Disconnected.";
+                        Status = 7;
+                        return null;
+
+                    case "busy":
+
+                        //Worker isn't available to respond for some reason. 
+
+                        rT.Status = 0;
+                        rT.taskLogs.ClearLast();
+                        break;
+
+                    case "statusupdate":
+
+                        //Default update packet.
+
+                        //Sends the current number of logs recieved from the worker.
+                        if (rT != null) sendPacket.LogLines = rT.taskLogs.LogLines.Last();
+
+                        if (Status == 0 && !awaitUpdate)
+                        {
+                            ConsoleBuffer = $"{name} is awaiting work.";
+                            sendPacket.command = "getupdate";
+                        }
+                        else if (awaitUpdate)
+                        {
+                            sendPacket.command = "acknowledge_me";
+                        }
+                        else if (Status == 2)
+                        {
+                            sendPacket.command = "acknowledge";
+                        }
+                        else if (activeJob != null && Status == 1)
+                        {
+                            if (activeJob.Status == 5)
+                            {
+                                sendPacket.command = "cancel";
+                                return sendPacket;
+                            }
+                            else
+                            {
+                                sendPacket.command = "getupdate";
+                            }
+                        }
+                        else
+                        {
+                            sendPacket.command = "getupdate";
+                        }
+                        break;
+
+                    case "return":
+
+                        //Task returned. State of task can be included in arguments
+                        //TODO: cleanup to match new worker responses. 
+
+                        if (rT != null)
+                        {
+                            if (_packet.arguments[0] == "fail")//Task failed hard enough that the worker was able to detect it, it will be auto blacklisted to make sure it doesn't happen again.
+                            {
+                                activeJob.WorkerBlackList.Add(ID);
+                                rT.taskLogs.WriteToWorker($"{name} Has been added to the black list.");
+                            }
+                            else if (_packet.arguments[0] == "log rebuild")//Finishs building the Log buffer before applying the new log data. This likely consists of multiple log rebuild packets, but ends here.
+                            {
+                                foreach (var logLine in _packet.Logs)
+                                {
+                                    LogBuffer += logLine;
+                                }
+                                rT.taskLogs.WriteToWorker(LogBuffer + "\n-----Log rebuild complete-----\n", false);
+                                rT.taskLogs.WriteToManager("Worker Log rebuit.");
+                                LogBuffer = "";
+                                LogCount = 0;
+                            }
+                            else //Checks if a log rebuild is needed. If statement also acts as a loop block so workers cant get stuck trying to rebuild broken logs forever.
+                            {
+                                if (_packet.LogLines != rT.taskLogs.LogLines.Last())
+                                {
+                                    LogBuffer = $"----Logs expected {_packet.LogLines}----\n----Logs recieved {rT.taskLogs.LogLines.Last()}----\n----Rebuilding Log from source----\n";
+                                    sendPacket.command = "logrebuild";
+                                    sendPacket.LogLines = 0;
+                                    return sendPacket;
+                                }
+                                else rT.taskLogs.WriteToWorker($"\n----Logs expected {_packet.LogLines}----\n----Logs recieved {rT.taskLogs.LogLines.Last()}----\n");
+                            }
+
+                            rT.taskLogs.WriteToWorker($"\n\n{name} has returned this task to the manager.\n\n-------------------------------Worker Log end-------------------------------\n");
+                            rT.FinishReported = true;
+                            rT.FinishReportedTime = DateTime.Now;
+                            renderTaskIndex = -1;
+                            activeJob = null;
+                        }
+                        else
+                        {
+                            activeJob = null;
+                            renderTaskIndex = -1;
+                        }
+                        LogBuffer = "";
+                        LogCount = 0;
+                        awaitUpdate = true;
+                        sendPacket.command = "acknowledge_me";
+                        packetBuffer = new tcpPacket();
+                        break;
+
+                    case "logpart":
+
+                        //recieved part of the log rebuild, final part will be sent with a return command.
+
+                        foreach (var logLine in _packet.Logs)
+                        {
+                            LogBuffer += logLine;
+                        }
+                        LogCount += _packet.Logs.Count();
+                        sendPacket.command = "logrebuild";
+                        sendPacket.LogLines = LogCount;
+                        break;
+
+                    case "acknowledge_me":
+
+                        //Requests acknoledgement from worker.
+
+                        sendPacket.command = "acknowledge";
+                        awaitUpdate = false;
+                        renderTaskIndex = -1;
+                        activeJob = null;
+                        break;
+
+                    case "acknowledge":
+
+                        //respond to Workers requst for acknoladgedgement.
+
+                        sendPacket.command = "getupdate";
+                        awaitUpdate = false;
+                        break;
+
+                    case "passive":
+
+                        //Deprecated way to watch the servers log from a worker. Replaced by GUI.
+
+                        ConsoleBuffer = $"{name} Switching to passive mode.";
+                        try
+                        {
+                            sendPacket.arguments = Readout.consoleBuffer.ToArray();
+
+                        }
+                        catch
+                        {
+                            Console.WriteLine($"Failed to build send console to {name}");
+                        }
+                        sendPacket.command = "passive";
+                        break;
+
+                    case "available":
+
+                        //Worker is stating its status is avalable for work 
+                        //Deprecated, status is set in status update. 
+
+                        Status = 0;
+                        ConsoleBuffer = $"{name} is once again available to render.";
+                        sendPacket.command = "getupdate";
+                        break;
+
+                    case "sleeping":
+
+                        //Sets worker to no longer recieve renderTasks, but remains connected.
+                        //TODO: Reduce packet frequency to once every minute when sleeping.
+
+                        Status = 3;
+                        sendPacket.command = "sleep";
+                        ConsoleBuffer = $"{name} is sleeping";
+                        break;
+
+                    case "failedpacketread":
+
+                        //Failed to read packet, requests the same packet again. 
+
+                        if (LastSentPacket != null) sendPacket = LastSentPacket;
+                        else sendPacket.command = "getupdate";
+                        break;
+
+                    default:
+
+                        //If no response can be built, assume read failed.
+
+                        sendPacket.command = "failedPacketRead";
+                        break;
+                }
+                return sendPacket;
+            }
+            catch
+            {
+                //TODO: Check if this is causing problems.
+                return null;
+            }
+        }
+        private tcpPacket newWorkerSetup(tcpPacket receivedPacket)
+        {
+            //creates new workerObject, adds it to lists and returns a response tcpPacket.
+            //TODO: Rewrite ID creation to be a simpler itteration. 
+
+            tcpPacket returnPacket = new tcpPacket();
+            var search = DB.FindWorker(DB.WorkerList, receivedPacket.senderID);
+            
+            if (search != null)
+            {
+                //Worker exists in worker history
+
+                returnPacket.command = "acknowledge_me";
+                returnPacket.arguments = new string[1];
+            }
+            else
+            {
+                //Worker has never connected or history was cleared.
+
+                if (receivedPacket.senderID != -1 && search != null)
+                {
+                    //Checks if worker has an existing ID and if it is in use by another worker.
+
+                    ID = receivedPacket.senderID;
+                    returnPacket.command = "acknowledge";
+                    returnPacket.arguments = new string[1];
+                }
+                else
+                {
+                    //Assigning new ID.
+
+
+                    ID = DB.NextWorker();
+                    returnPacket.command = "assignid";
+                    returnPacket.arguments = new string[1];
+                    returnPacket.arguments[0] = $"{ID}";
+                }
+                name = receivedPacket.arguments[0];
+                BuildRenderAppList(JsonSerializer.Deserialize<string[]>(receivedPacket.arguments[1]), receivedPacket.arguments[2].ToLower());
+                GPU = bool.Parse(receivedPacket.arguments[3]);
+                lastSeen = DateTime.Now;
+                DB.WorkerList.Add(this);
+                Console.WriteLine($"New Worker added to WorkerList");
+                DB.UpdateDBFile = true;
+            }
+
+            DB.WorkerList = DB.WorkerList.OrderBy(x => x.name).ToList<Worker>();
+            return returnPacket;
         }
     }
 }
