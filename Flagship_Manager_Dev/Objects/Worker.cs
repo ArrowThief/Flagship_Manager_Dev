@@ -358,18 +358,6 @@ namespace FlagShip_Manager.Objects
                     case "passive":
 
                         //Deprecated way to watch the servers log from a worker. Replaced by GUI.
-
-                        ConsoleBuffer = $"{name} Switching to passive mode.";
-                        try
-                        {
-                            sendPacket.arguments = Readout.consoleBuffer.ToArray();
-
-                        }
-                        catch
-                        {
-                            Console.WriteLine($"Failed to build send console to {name}");
-                        }
-                        sendPacket.command = "passive";
                         break;
 
                     case "available":

@@ -245,6 +245,22 @@ namespace FlagShip_Manager.Management_Server
             }
             return null;
         }
+        internal static int FindJobIndex(List<Job> searchList, int target, int index = 0)
+        {
+            //Binary search for Job in List, returns index of job.
+
+            int mid = searchList.Count() / 2;
+            if (searchList[mid].ID == target) return index;
+            else if (searchList[mid].ID > target)
+            {
+                return FindJobIndex(searchList.GetRange(0, mid - 1), target, mid-1);
+            }
+            else if (searchList[mid].ID < target)
+            {
+                return FindJobIndex(searchList.GetRange(mid + 1, searchList.Count() - mid - 1), target, mid+1);
+            }
+            return -1;
+        }
         internal static Worker? FindWorker(List<Worker> searchList, int target)
         {
             //Binary search through Archive Job list.

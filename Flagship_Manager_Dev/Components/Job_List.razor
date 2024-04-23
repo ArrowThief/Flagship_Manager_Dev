@@ -4,6 +4,7 @@
 @using FlagShip_Manager
 @using System.Text.RegularExpressions
 @using System.Timers
+
 @inject IJSRuntime RunJS
 @*
     Job list Component. 
@@ -174,140 +175,135 @@
 @inject IJSRuntime JSRuntime
 <!--Begin job header bar@ShowArchiveBatch;-->
 @{
+    UpdateLists();
     var ID = "jl2";
     if (!Archive) ID = "jl3";
 }
-    <div id="@ID">
-        @foreach(Job J in JobList)
+<div id="@ID">
+    @foreach(Job J in JobList)
+    {
+        try
         {
-            try
-            {
-                //Job J = jobManager.jobList[ConvertFromIDtoIndex(JobIDList[i])];
-                <div >
+            <div >
                 @{
-                    var CBID = J.ID + "CB";
-                    var PriorityID = J.ID + "Pri";
-                    var BarID = J.ID + "bar";
-                    var Arrow = J.ID + "arrow";
+                var CBID = J.ID + "CB";
+                var PriorityID = J.ID + "Pri";
+                var BarID = J.ID + "bar";
+                var Arrow = J.ID + "arrow";
+                }
 
-
-                    <div id="@BarID" style="background: #424242; width: 100%; height:32px; clear: both;" hidden=@hidden>
-                        <div class="TableCell" style="margin-left:4px; width: 45px; background: @StatusColor[J.Status]; height:25px; border-radius:2px;"><img src=@StatusIcon[J.Status] style="opacity:.5; width:20px; position:relative; bottom:1px;" /> </div>
-                        <div class="TableCell" style="width:50px"><button class="ExpandButton" @onclick="() => OpenPanel(J.ID)"><img style="transition:all; transition-duration:.2s" id="@Arrow" src="Images/arrow right.png" width="15" /></button></div>
-                        <div style="width:45px; float:left; position:relative; top:1px; text-align: center;">
-                            <img src=@apps[J.RenderApp.ToLower()] style="width:30px" />
+                <div id="@BarID" style="background: #424242; width: 100%; height:32px; clear: both;" hidden=@hidden>
+                    <div class="TableCell" style="margin-left:4px; width: 45px; background: @StatusColor[J.Status]; height:25px; border-radius:2px;"><img src=@StatusIcon[J.Status] style="opacity:.5; width:20px; position:relative; bottom:1px;" /> </div>
+                    <div class="TableCell" style="width:50px"><button class="ExpandButton" @onclick="() => OpenPanel(J.ID)"><img style="transition:all; transition-duration:.2s" id="@Arrow" src="Images/arrow right.png" width="15" /></button></div>
+                    <div style="width:45px; float:left; position:relative; top:1px; text-align: center;">
+                        <img src=@apps[J.RenderApp.ToLower()] style="width:30px" />
+                    </div>
+                    <div class="TableCell" style="width: 400px;"> <label>@J.Name</label></div>
+                    @if (J.Archive)
+                    {
+                        <div class="TableCell" style="width: 60px;">
+                            <label id="@PriorityID" style="width:30px; text-align: center; background: none; border: hidden;">@J.Priority</label>
                         </div>
-                        <div class="TableCell" style="width: 400px;"> <label>@J.Name</label></div>
-                        @if (J.Archive)
-                        {
-                            <div class="TableCell" style="width: 60px;">
-                                <label id="@PriorityID" style="width:30px; text-align: center; background: none; border: hidden;">@J.Priority</label>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="TableCell" style="width: 60px;">
-                                <input type="number" id="@PriorityID" style="width:30px; text-align: center; background: none; border: hidden;"
-                                       value="@J.Priority"
-                                @onfocusin="()=> SelectPriority(PriorityID)"
-                                @onkeypress="e => JSRemoveFocus(e, PriorityID)"
-                                @onfocusout="()=> JSCheckValue(J)">
-                            </div>
-                        }
-                        @if (J.ShotAlert)
-                        {
-                            <div class="ProgressBarBorderRed">
-                                <div class="pB" style="background: @StatusColor[J.Status]; width: @GetProgressBarWidth(J.Progress)px;"></div>
-                                <label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:12px; left:1px;">@J.Progress%</label>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="ProgressBarBorder">
-                                <div class="pB" style="background: @StatusColor[J.Status];width: @GetProgressBarWidth(J.Progress)px;"></div>
-                                <label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:12px; left:1px;">@J.Progress%</label>
-                            </div>
-                        }
-                        <div class="TableCell" style="width: 90px;">@J.CompletedFrames/@J.TotalFramesToRender</div>
-                        <div class="TableCell" style="width: 80px;">@J.totalActiveTime.ToString(@"d\:hh\:mm")</div>
-                        <div class="TableCell" style="width: 80px;">@J.RemainingTime.ToString(@"d\:hh\:mm")</div>
-
-                        @if (Archive)
-                        {
-                            <div class="TableCell" style="width: 120px;">@J.ArchiveDate.ToString(@"MM/dd hh:mm")</div>
-                        }
-                        else
-                        {
-                            <div class="TableCell" style="width: 120px;">@J.CreationTime.ToString(@"MM/dd hh:mm")</div>
-                        }
-                        <div style=" width:140px; float:left; position:relative; top:1px; left:40px; text-align: left;">
-                            <img style="opacity:.7;" src=@GetTypeIcon(J) width="20" />
-                            <label style="font-size:14px; -webkit-text-fill-color: #E4E4E4;">@J.FileFormat</label>
+                    }
+                    else
+                    {
+                        <div class="TableCell" style="width: 60px;">
+                            <input type="number" id="@PriorityID" style="width:30px; text-align: center; background: none; border: hidden;"
+                                    value="@J.Priority"
+                            @onfocusin="()=> SelectPriority(PriorityID)"
+                            @onkeypress="e => JSRemoveFocus(e, PriorityID)"
+                            @onfocusout="()=> JSCheckValue(J)">
                         </div>
-                        <Job_Buttons UpdateList="UpdateList" CheckID="RemoveActiveChecked" Archive="J.Archive" _Status="J.Status" _JID="J.ID"></Job_Buttons>
-                        <div class="TableCell" style="width:50px; position:relative; top:5px;">
-                            <input id="@CBID" style="accent-color:#1E1E1E;" type="checkbox" @onchange="()=> AddorRemoveActiveChecked(J.ID)" />
+                    }
+                    @if (J.ShotAlert)
+                    {
+                        <div class="ProgressBarBorderRed">
+                            <div class="pB" style="background: @StatusColor[J.Status]; width: @GetProgressBarWidth(J.Progress)px;"></div>
+                            <label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:12px; left:1px;">@J.Progress%</label>
                         </div>
+                    }
+                    else
+                    {
+                        <div class="ProgressBarBorder">
+                            <div class="pB" style="background: @StatusColor[J.Status];width: @GetProgressBarWidth(J.Progress)px;"></div>
+                            <label style="-webkit-text-fill-color: #E4E4E4; position:relative; bottom:12px; left:1px;">@J.Progress%</label>
+                        </div>
+                    }
+                    <div class="TableCell" style="width: 90px;">@J.CompletedFrames/@J.TotalFramesToRender</div>
+                    <div class="TableCell" style="width: 80px;">@J.totalActiveTime.ToString(@"d\:hh\:mm")</div>
+                    <div class="TableCell" style="width: 80px;">@J.RemainingTime.ToString(@"d\:hh\:mm")</div>
 
+                    @if (Archive)
+                    {
+                        <div class="TableCell" style="width: 120px;">@J.ArchiveDate.ToString(@"MM/dd hh:mm")</div>
+                    }
+                    else
+                    {
+                        <div class="TableCell" style="width: 120px;">@J.CreationTime.ToString(@"MM/dd hh:mm")</div>
+                    }
+                    <div style=" width:140px; float:left; position:relative; top:1px; left:40px; text-align: left;">
+                        <img style="opacity:.7;" src=@GetTypeIcon(J) width="20" />
+                        <label style="font-size:14px; -webkit-text-fill-color: #E4E4E4;">@J.FileFormat</label>
+                    </div>
+                    <Job_Buttons UpdateList="UpdateList" CheckID="RemoveActiveChecked" Archive="J.Archive" _Status="J.Status" _JID="J.ID"></Job_Buttons>
+                    <div class="TableCell" style="width:50px; position:relative; top:5px;">
+                        <input id="@CBID" style="accent-color:#1E1E1E;" type="checkbox" @onchange="()=> AddorRemoveActiveChecked(J.ID)" />
                     </div>
 
+                </div>
+
                     
-                    <!--End Job header bar-->
+                <!--End Job header bar-->
+                @{
                     var TaskDiv = J.ID + "H";
                     var TD = J.ID + "P";
                     var MaxA = J.ID + "MaxA";
-
-                    <div id="@TaskDiv"  style="display:none; height:00px; overflow:hidden; transition-duration:.4s; transition-property:all;">
-                        <div id="@TD" style="position:relative; bottom:272px; transition-duration:.4s; transition-property:all;">
-                            <div style="width:1520px; height:4px;"></div>
-                            <div style="width:100%; height: 25px; background: #595959;">
-                                <label style="padding-left:1%; position:relative; top:2px; font-weight:800;">Tasks</label>
-                                <label style="padding-left:64.5%; position:relative; top:2px; font-weight:800;">Worker Black List</label>
-                                <label style="padding-left:3.5%; position:relative; top:2px; font-weight:800;">Meta Data</label>
-                            </div>
-                            <div style="display:inline-flex;">
-
-                                <div>
-                                    <Job_TaskList UpdateJob="UpdateList" LogViewCall="OpenLogView" RenderTasks="@J.renderTasks.ToArray()" JID="@J.ID" CreationTime="@J.CreationTime"></Job_TaskList>
-                                </div>
-                                <div>
-                                    <Job_BlackList UpdateJob="UpdateList" Status="@J.Status" GPUrequired="@J.GPU" JID="@J.ID" renderApp="@J.RenderApp" idBlackList="@J.WorkerBlackList" ShowButton="@J.finished"></Job_BlackList>
-                                </div>
-                                <div>
-                                    <Job_MetaData AverageFPS="@J.TimePerFrame" MachineHours="@J.MachineHours" JobID="@J.ID" GPU="@J.GPU" Overwrite="@J.Overwrite" OutputPath="@J.outputPath" Preset="@J.RenderPreset" ProjectPath="@J.WorkingProject" TempProjectPath="@J.Project"></Job_MetaData>
-                                </div>
-                            </div>
-                            @if (J.renderTasks.Count() > 6)
-                            {
-                                <button class="transparentButton" @onclick="() => MaxamizeTasklist(J.ID,false)">
-                                    <img id="@MaxA" src="Images/arrow down.png" style="width:24px; position:relative; bottom: 4px; transition:all; transition-duration:.5s;" />
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="transparentButton" disabled>
-                                    <img id="@MaxA" src="Images/minus.png" style="width:24px; position:relative; bottom: 4px; transition:all; transition-duration:.5s;" />
-                                </button>
-                            }
-                        </div>
-                    </div>
-                    <div style="width:1520px; height:4px;"></div>
-                    
                 }
+
+                <div id="@TaskDiv"  style="display:none; height:00px; overflow:hidden; transition-duration:.4s; transition-property:all;">
+                    <div id="@TD" style="position:relative; bottom:272px; transition-duration:.4s; transition-property:all;">
+                        <div style="width:1520px; height:4px;"></div>
+                        <div style="width:100%; height: 25px; background: #595959;">
+                            <label style="padding-left:1%; position:relative; top:2px; font-weight:800;">Tasks</label>
+                            <label style="padding-left:64.5%; position:relative; top:2px; font-weight:800;">Worker Black List</label>
+                            <label style="padding-left:3.5%; position:relative; top:2px; font-weight:800;">Meta Data</label>
+                        </div>
+                        <div style="display:inline-flex;">
+
+                            <div>
+                                <Job_TaskList UpdateJob="UpdateList" LogViewCall="OpenLogView" RenderTasks="@J.renderTasks.ToArray()" JID="@J.ID" CreationTime="@J.CreationTime"></Job_TaskList>
+                            </div>
+                            <div>
+                                <Job_BlackList UpdateJob="UpdateList" Status="@J.Status" GPUrequired="@J.GPU" JID="@J.ID" renderApp="@J.RenderApp" idBlackList="@J.WorkerBlackList" ShowButton="@J.finished"></Job_BlackList>
+                            </div>
+                            <div>
+                                <Job_MetaData AverageFPS="@J.TimePerFrame" MachineHours="@J.MachineHours" JobID="@J.ID" GPU="@J.GPU" Overwrite="@J.Overwrite" OutputPath="@J.outputPath" Preset="@J.RenderPreset" ProjectPath="@J.WorkingProject" TempProjectPath="@J.Project"></Job_MetaData>
+                            </div>
+                        </div>
+                        @if (J.renderTasks.Count() > 6)
+                        {
+                            <button class="transparentButton" @onclick="() => MaxamizeTasklist(J.ID,false)">
+                                <img id="@MaxA" src="Images/arrow down.png" style="width:24px; position:relative; bottom: 4px; transition:all; transition-duration:.5s;" />
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="transparentButton" disabled>
+                                <img id="@MaxA" src="Images/minus.png" style="width:24px; position:relative; bottom: 4px; transition:all; transition-duration:.5s;" />
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div style="width:1520px; height:4px;"></div>
+                    
+            
             </div>
         }catch{
             Console.WriteLine("Failed to draw job.");
         }
-        if(JobList.Count() < DB.ActiveJobs.Count())
-        {
-            for(int i = JobList.Count(); i < DB.ActiveJobs.Count(); i++)
-            {
-                JobList.Add(DB.ActiveJobs[i]);
-            }    
-        }
     }
 
-    </div>
+</div>
 
     <div>
         @if (DoubleLog) {
@@ -360,7 +356,7 @@
     private IJSObjectReference JS;
 
     private List<int> CheckedIDs = new List<int>();
-    private IList<Job> JobList = new List<Job>();
+    private static List<Job> JobList = new List<Job>();
 
     private bool ShowActiveBatch = false;
     private bool ShowArchiveBatch = false;
@@ -374,13 +370,53 @@
     private Timer? time2;
     public renderTask? LogTask = null;
 
-    private int ConvertFromIDtoIndex(int _ID)
+    internal void UpdateLists()
     {
-        //Returns the index of a job from it's ID value
-        //TODO: For goodness sake use a hashmap. 
+        //Updates the UI Job List with any changes from the DB Job List. 
+        //Runs everytime the UI is renndered.
 
-        return jobManager.jobList.FindIndex(j => j.ID == _ID);
+        List<Job> temp;
+        List<int> remove;
+
+        if (Archive){
+
+            //Assigns temp variables to Archives
+
+            temp = DB.archive;
+            remove = DB.removeArchive;
+        }
+        else
+        {
+            //Assigns temp variables to Active
+
+            temp = DB.active;
+            remove = DB.removeActive;
+        }
+
+        foreach(int id in remove)
+        {
+            //Removes any Jobs in remove List
+
+            int Index = DB.FindJobIndex(JobList, id);
+            if (Index > -1) JobList.Remove(DB.FindJob(JobList, id));
+            else Console.WriteLine("Failed to find Job Index");
+        }
+
+        //Clear remove list
+        remove.Clear();
+
+        if(JobList.Count() < temp.Count())
+        {
+            //Adds any new Jobs from The DB joblist to the UI Job list.
+            
+            for(int i = JobList.Count(); i < temp.Count(); i++)
+            {
+                JobList.Add(temp[i]);
+            }    
+        }
+
     }
+
     protected override void OnAfterRender(bool firstRender)
     {
         //Protected method for first render. 
@@ -527,15 +563,14 @@
             BlackListActive = "none";
         }
     }
-    public void ArchiveJob(int _ID)
+    public void ArchiveJob(Job j)
     {
         //Moves job to Archive List
 
-        var j = jobManager.jobList.Find(job => job.ID == _ID);
-        if (!j.finished) WebButtons.CancelJob(_ID);
-        jobManager.ActiveIDList.Remove(_ID);
-        jobManager.ArchiveIDList.Add(_ID);
-        
+        if (!j.finished) WebButtons.CancelJob(j.ID);
+        DB.archive.Add(j);
+        DB.active.Remove(j);
+
         try
         {
             DB.UpdateDBFile = true;

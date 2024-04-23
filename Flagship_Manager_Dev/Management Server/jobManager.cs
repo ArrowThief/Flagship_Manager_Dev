@@ -94,12 +94,7 @@ namespace FlagShip_Manager
                             clear = false;
                             Thread.Sleep(1000);
                             Console.Clear();
-                            Readout.ReadoutBuffer = "Awaiting new render Jobs.";
                         }
-                    }
-                    else
-                    {
-                        Readout.ReadoutBuffer = "Working on Jobs...";
                     }
                     
                     foreach (Job _job in activeJobs)
@@ -215,8 +210,7 @@ namespace FlagShip_Manager
             //TODO Someday: Rewrite AE and blender to somehow connect through tcpip. Possibly though Posting to a webaddress? 
 
             Regex ErrorCheck = new Regex(@"(ERROR)");
-            Readout.ReadoutBuffer = "Started checking watch folder for new jobs.";
-
+            
             while (true)
             {
                 Thread.Sleep(1000);
@@ -283,7 +277,7 @@ namespace FlagShip_Manager
                 }
                 catch
                 {
-                    Readout.ReadoutBuffer = $"Unable to read from {path}.";
+                    Console.WriteLine($"Unable to read from {path}.");
                 }
             }
         }

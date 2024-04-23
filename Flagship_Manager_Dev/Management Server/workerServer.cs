@@ -50,7 +50,6 @@ namespace FlagShip_Manager
         public static void setupWorkerServer()
         {
             Cleanup.Start();
-            Readout.ReadoutBuffer = "Setting Up server";
             _serverSocket.Bind(new IPEndPoint(IPAddress.Any, 32761));
             _serverSocket.Listen(100);
             _serverSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
