@@ -4,6 +4,7 @@
 @using FlagShip_Manager
 @using FlagShip_Manager.Helpers
 @using Flagship_Manager_Dev.Components
+@using FlagShip_Manager.Management_Server
 @inject IJSRuntime RunJS
 @*
     Main GUI page for flagship
@@ -243,7 +244,7 @@
         </div>
     </div>
 
-    <button id="2b" class="ArchiveBar Animate" style="" @onclick='() =>  OpenCloseList("2", jobManager.ArchiveIDList.ToArray())'>Archive: @jobManager.ArchiveIDList.Count()</button>
+    <button id="2b" class="ArchiveBar Animate" style="" @onclick='() =>  OpenCloseList("2")'>Archive: @CurrentArchiveCount</button>
     <div id="2h" class="Animate" style="overflow:hidden; display:block; height:0px;">
         <!--List height-->
         <div id="2p" class="Animate" style="position:relative; bottom:@AR_StartHeight;">
@@ -275,13 +276,13 @@
             <div class="Background" style=" display:block;">
                 <!--<DivArchiveJobUI></DivArchiveJobUI>-->
 
-                <Job_List FullUpdate="UpdateAll" CheckID="ArchiveSelectionChange" Archive="true"  JobIDList="@jobManager.ArchiveIDList"></Job_List>
+                <Job_List FullUpdate="UpdateAll" CheckID="ArchiveSelectionChange" Archive="true"></Job_List>
                
             </div>
         </div>
     </div>
         
-    <button id="3b" class="QueueBarOpen Animate" @onclick='() => OpenCloseList("3", jobManager.ActiveIDList.ToArray())'>Active Queue: @jobManager.ActiveIDList.Count()</button>
+    <button id="3b" class="QueueBarOpen Animate" @onclick='() => OpenCloseList("3")'>Active Queue: @CurrentActiveCount</button>
     <div id="3h" class="Animate" style="overflow:hidden; display:block; height:0px;">
         <div id="3p" class="Animate" style="position:relative; bottom:@AQ_StartHeight;">
             <div style="display:block; -webkit-text-fill-color: #E4E4E4; background:#1E1E1E; width:1550px; height: 36px;">
@@ -313,7 +314,7 @@
                 </div>
             </div>
             <div class="Background" style="display:block; height:auto;">
-                <Job_List FullUpdate="UpdateAll" CheckID="ActiveSelectionChange" Archive="false" JobIDList="@jobManager.ActiveIDList"></Job_List>
+                <Job_List FullUpdate="UpdateAll" CheckID="ActiveSelectionChange" Archive="false"></Job_List>
             </div>
         </div>
     </div>
@@ -346,9 +347,9 @@
 @code 
 {
     private bool viewDebug = false;
-    private string WL_StartHeight = (WorkerServer.WorkerList.Count() * 36 + 36) + "px";
-    private string AR_StartHeight = (jobManager.ArchiveIDList.Count() * 36 + 36) + "px";
-    private string AQ_StartHeight = (jobManager.ActiveIDList.Count() * 36 + 36) + "px";
+    private string WL_StartHeight = (DB.workers.Count() * 36 + 36) + "px";
+    private string AR_StartHeight = (DB.archive.Count() * 36 + 36) + "px";
+    private string AQ_StartHeight = (DB.active.Count() * 36 + 36) + "px";
 
     private int CurrentWorkerCount;
     private int CurrentArchiveCount;
@@ -372,9 +373,9 @@
         if (firstRender)
         {
             await BuildJS();
-            CurrentWorkerCount = WorkerServer.WorkerList.Count();
-            CurrentArchiveCount = jobManager.ArchiveIDList.Count();
-            CurrentActiveCount = jobManager.ActiveIDList.Count();
+            CurrentWorkerCount = DB.workers.Count();
+            CurrentArchiveCount = DB.archive.Count();
+            CurrentActiveCount = DB.active.Count();
             time.Interval = 500;
             time.Elapsed += OnTimeInterval;
             time.AutoReset = true;
@@ -398,7 +399,7 @@
     public void Dispose()
     {
         // While navigating to other components, Dispose method will be called and clean up the Timer function.
-        
+
         time?.Dispose();
     }
     public async void UpdateAll(){
@@ -443,7 +444,7 @@
             await JSFunctiion("SetElementOpacity", "31", "0");
             await JSFunctiion("EnableDisableElement", "31", "true");
         }
-        if (ActiveSelection.Count() == jobManager.ActiveIDList.Count())
+        if (ActiveSelection.Count() == CurrentActiveCount)
         {
             await JSFunctiion("SetCheckValue", "3cb", "true");
         }
@@ -487,7 +488,7 @@
             await JSFunctiion("SetElementOpacity", "21", "0");
             await JSFunctiion("EnableDisableElement", "31", "true");
         }
-        if (ArchiveSelection.Count() == jobManager.ArchiveIDList.Count())
+        if (ArchiveSelection.Count() == CurrentArchiveCount)
         {
             await JSFunctiion("SetCheckValue", "2cb", "true");
         }
@@ -499,7 +500,7 @@
     }
     public static int CountOnlineWorkers(){
         int Online = 0;
-        foreach(Worker W in WorkerServer.WorkerList){
+        foreach(Worker W in DB.workers){
             if (W.Status != 7) Online++;
         }
         return Online;
@@ -552,9 +553,9 @@
     {
         //Selects or deslects all jobs in list.
 
-        int[] temp;
-        if (_Archive) temp = jobManager.ArchiveIDList.ToArray();
-        else temp = jobManager.ActiveIDList.ToArray();
+        List<Job> temp;
+        if (_Archive) temp = DB.archive;
+        else temp = DB.active;
         bool selected = bool.Parse(eve.Value.ToString());
         if (selected)
         {
@@ -569,23 +570,23 @@
         if (_Archive) ArchiveSelection.Clear();
         else ActiveSelection.Clear();
 
-        foreach(int jid in temp)
+        foreach(Job j in temp)
         {
             if (selected)
             {
-                JSFunctiion("ChangeBarColor", jid + "bar", "true");
-                JSFunctiion("SetCheckValue", jid + "CB", "true");
+                await JSFunctiion("ChangeBarColor", j.ID + "bar", "true");
+                await JSFunctiion("SetCheckValue", j.ID + "CB", "true");
 
                 if (_Archive)
                 {
-                    ArchiveSelection.Add(jid);
+                    ArchiveSelection.Add(j.ID);
                 }
-                else ActiveSelection.Add(jid);
+                else ActiveSelection.Add(j.ID);
             }
             else
             {
-                await JSFunctiion("SetCheckValue", jid + "CB", "false");
-                await JSFunctiion("ChangeBarColor", jid + "bar", "false");
+                await JSFunctiion("SetCheckValue", j.ID + "CB", "false");
+                await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
             }
         }
         InvokeAsync(() => StateHasChanged());
@@ -594,25 +595,25 @@
     {
         //Runs batch action on all select jobs
 
+        List<Job> temp; 
+
         if (_Archive)
         {
             WebButtons.RunAction(_Action, ArchiveSelection.ToArray());
+            temp = DB.archive;
         }
         else
         {
             WebButtons.RunAction(_Action, ActiveSelection.ToArray());
+            temp = DB.active;
         }
 
-        foreach (int jid in jobManager.ArchiveIDList)
+        foreach (Job j in temp)
         {
-            await JSFunctiion("SetCheckValue", jid + "CB", "false");
-            await JSFunctiion("ChangeBarColor", jid + "bar", "false");
+            await JSFunctiion("SetCheckValue", j.ID + "CB", "false");
+            await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
         }
-        foreach (int jid in jobManager.ActiveIDList)
-        {
-            await JSFunctiion("SetCheckValue", jid + "CB", "false");
-            await JSFunctiion("ChangeBarColor", jid + "bar", "false");
-        }
+        
         await JSFunctiion("SetElementOpacity", "21", "0");
         await JSFunctiion("EnableDisableElement", "21", "true");
         await JSFunctiion("SetCheckValue", "2cb", "false");
@@ -628,7 +629,7 @@
 
 
     }
-    internal async Task OpenCloseList(string _ListID, int[]? _JobList = null)
+    internal async Task OpenCloseList(string _ListID)
     {
         //Toggles lists open or closed.
 
@@ -638,19 +639,19 @@
         {
             if (_ListID == "1")
             {
-                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, _JobList);
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, DB.workers.ToArray());
                 At = temp.Split(",");
                 wOpen = bool.Parse(At[0]);
             }
             else if (_ListID == "2")
             {
-                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, _JobList);
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, DB.archive.ToArray());
                 At = temp.Split(",");
                 arOpen = bool.Parse(At[0]);
             }
             else if (_ListID == "3")
             {
-                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, _JobList);
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, DB.active.ToArray());
                 At = temp.Split(",");
                 acOpen = bool.Parse(At[0]);
             }

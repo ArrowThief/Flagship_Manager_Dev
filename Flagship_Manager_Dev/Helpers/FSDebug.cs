@@ -21,7 +21,7 @@ namespace FlagShip_Manager.Helpers
             DW.Status = 0;
             DW.Dummy = true;
             DW.ID = DB.NextWorker();
-            DB.WorkerList.Add(DW);
+            DB.workers.Add(DW);
             CurrentDummys++;
         }
         public static void AddLongDummyWorker()
@@ -35,11 +35,11 @@ namespace FlagShip_Manager.Helpers
             //Removes all dummy workers.
 
             List<int> RemoveIndex = new List<int>();
-            for (int i = 0; i < DB.WorkerList.Count(); i++)
+            for (int i = 0; i < DB.workers.Count(); i++)
             {
-                if (DB.WorkerList[i].Dummy)
+                if (DB.workers[i].Dummy)
                 {
-                    DB.WorkerList.RemoveAt(i);
+                    DB.workers.RemoveAt(i);
                     i--;
                 }
             }

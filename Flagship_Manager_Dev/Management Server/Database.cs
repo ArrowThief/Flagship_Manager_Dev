@@ -40,7 +40,7 @@ namespace FlagShip_Manager.Management_Server
         public static List<int> removeArchive = new List<int>();
         private static int archiveID = 0;
 
-        public static List<Worker> WorkerList = new List<Worker>();
+        public static List<Worker> workers = new List<Worker>();
         public static List<int> removeWorker = new List<int>();
         private static int workerID = 0;
 
@@ -63,7 +63,7 @@ namespace FlagShip_Manager.Management_Server
             byte[] DBSerial;
             try
             {
-                DBSerial = ObjectToByteArray(new DBObject(active.ToArray(), archive.ToArray(), WorkerList.ToArray()));
+                DBSerial = ObjectToByteArray(new DBObject(active.ToArray(), archive.ToArray(), DB.workers.ToArray()));
                 var Compressed = Misc.CompressArray(DBSerial);
                 File.WriteAllBytes(_filePath, Compressed);
             }
@@ -96,10 +96,10 @@ namespace FlagShip_Manager.Management_Server
                 if (newDB != null)
                 {
                     CheckDatabase(newDB);
-                    foreach (var worker in WorkerList)
+                    foreach (var worker in workers)
                     {
                         worker.Status = 7;
-                        WorkerList.Add(worker);
+                        workers.Add(worker);
                     }
                 }
             }

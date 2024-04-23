@@ -54,7 +54,7 @@ namespace FlagShip_Manager
             //TODO: Rewrite everything, move class.
 
             List<int> _return = new List<int>();
-            var workers = DB.WorkerList;
+            var workers = DB.workers;
             var activeJobs = new List<Job>();
             for(int jindex = 0; jindex < DB.active.Count(); jindex++)
             {

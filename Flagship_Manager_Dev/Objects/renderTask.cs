@@ -62,7 +62,7 @@ namespace FlagShip_Manager.Objects
             //Returns worker object
             //TODO: Switch to Binary search to find workers.
 
-            Worker? w = DB.FindWorker(DB.WorkerList, taskLogs.WorkerIDs.Last());
+            Worker? w = DB.FindWorker(DB.workers, taskLogs.WorkerIDs.Last());
             return w;
         }
         public void Finish()

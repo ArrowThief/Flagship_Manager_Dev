@@ -24,9 +24,9 @@ namespace FlagShip_Manager
             while (true)
             {
                 Thread.Sleep(1000);
-                for (int i = 0; i < DB.WorkerList.Count(); i++)
+                for (int i = 0; i < DB.workers.Count(); i++)
                 {
-                    Worker w = DB.WorkerList[i];
+                    Worker w = DB.workers[i];
                     if (w == null || w.Dummy) continue;
                     try
                     {
@@ -43,7 +43,7 @@ namespace FlagShip_Manager
                         //WorkerList.Remove(w);
                     }
                 }
-                DB.WorkerList = DB.WorkerList.DistinctBy(x => x.ID).ToList();
+                DB.workers = DB.workers.DistinctBy(x => x.ID).ToList();
 
             }
         }
@@ -71,7 +71,7 @@ namespace FlagShip_Manager
             //Worker connection loop. While worker is connected loop will send and recieve data every second. 
             //TODO: Find bug that sometimes caues workers to get caught in a loop of connecting and disconnecting. 
 
-            var WorkerList = DB.WorkerList;
+            var WorkerList = DB.workers;
 
             Worker worker = new Worker();
             tcpPacket? sendPacket = new tcpPacket();

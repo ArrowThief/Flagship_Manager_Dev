@@ -132,7 +132,7 @@ namespace FlagShip_Manager
                                     {
                                         continue;
                                     }
-                                    Worker worker = DB.WorkerList[wi];
+                                    Worker worker = DB.workers[wi];
                                     if (worker.AvailableApps.Any(a => a.AppName == _job.RenderApp))
                                     {
                                         try
@@ -150,7 +150,7 @@ namespace FlagShip_Manager
                                             rT.taskLogs.SubmitTime[rT.Attempt()] = DateTime.Now;
                                             rT.taskLogs.WriteID(worker.ID);
                                             if (clearAvailableWorkers) break;
-                                            worker.ConsoleBuffer = ($"Sending: {_job.Name} task index: {ri} of {_job.renderTasks.Count()} to {DB.WorkerList[wi].name}");
+                                            worker.ConsoleBuffer = ($"Sending: {_job.Name} task index: {ri} of {_job.renderTasks.Count()} to {DB.workers[wi].name}");
                                             worker.awaitUpdate = true;
                                             break;
                                         }

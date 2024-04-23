@@ -421,7 +421,7 @@ namespace FlagShip_Manager.Objects
             //TODO: Rewrite ID creation to be a simpler itteration. 
 
             tcpPacket returnPacket = new tcpPacket();
-            var search = DB.FindWorker(DB.WorkerList, receivedPacket.senderID);
+            var search = DB.FindWorker(DB.workers, receivedPacket.senderID);
             
             if (search != null)
             {
@@ -456,12 +456,12 @@ namespace FlagShip_Manager.Objects
                 BuildRenderAppList(JsonSerializer.Deserialize<string[]>(receivedPacket.arguments[1]), receivedPacket.arguments[2].ToLower());
                 GPU = bool.Parse(receivedPacket.arguments[3]);
                 lastSeen = DateTime.Now;
-                DB.WorkerList.Add(this);
+                DB.workers.Add(this);
                 Console.WriteLine($"New Worker added to WorkerList");
                 DB.UpdateDBFile = true;
             }
 
-            DB.WorkerList = DB.WorkerList.OrderBy(x => x.name).ToList<Worker>();
+            DB.workers = DB.workers.OrderBy(x => x.name).ToList<Worker>();
             return returnPacket;
         }
     }
