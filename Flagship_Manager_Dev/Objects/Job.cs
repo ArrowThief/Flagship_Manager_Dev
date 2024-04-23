@@ -27,7 +27,7 @@ namespace FlagShip_Manager.Objects
         public int FrameStep { get; set; } = 1;
         public int TotalFramesToRender { get; set; }
         public int QueueIndex { get; set; } = -1;
-
+        
         //Progress info
         public bool Archive { get; set; } = false;
         public bool ShotAlert { get; set; } = false;
@@ -62,7 +62,6 @@ namespace FlagShip_Manager.Objects
         public List<DateTime> StartTimes { get; set; } = new List<DateTime>();
         public List<DateTime> EndTimes { get; set; } = new List<DateTime>();
         public bool UpdateUI { get; set; } = false;
-        public bool selected { get; set; } = false;
         public double SmallestFile { get; set; } = -1;
 
         public void getProgress()

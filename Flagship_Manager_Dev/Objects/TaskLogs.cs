@@ -3,6 +3,7 @@ using Flagship_Manager_Dev.Components;
 using FlagShip_Manager.Objects;
 using Microsoft.AspNetCore.CookiePolicy;
 using System.Security.Cryptography;
+using FlagShip_Manager.Management_Server;
 
 namespace Flagship_Manager_Dev.Objects
 {
@@ -92,7 +93,7 @@ namespace Flagship_Manager_Dev.Objects
             //Returns the worker name in the Last Index of Worker IDs
 
             if (WorkerLog.Count() < 1 || WorkerIDs.Last() == -1) return "";
-            string Name = WorkerServer.WorkerList.Find(w => w.WorkerID == WorkerIDs.Last()).name;
+            string Name = DB.FindWorker(DB.workers, WorkerIDs.Last()).name;
             if (Name != null && Name != "")
             {
                 return Name;

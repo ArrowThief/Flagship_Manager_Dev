@@ -2,6 +2,7 @@
 <h3>WorkerInfo</h3>
 @using FlagShip_Manager
 @using FlagShip_Manager.Objects
+@using FlagShip_Manager.Management_Server
 @using System.Timers
 <style>
     .extraButtons {
@@ -38,14 +39,14 @@ table, h3{
 
         </tr>
     
-        @for(int wI = 0; wI < WorkerServer.WorkerList.Count(); wI++)
+        @for(int wI = 0; wI < DB.workers.Count(); wI++)
         {
-            Worker @w = WorkerServer.WorkerList[wI];
+            Worker w = DB.workers[wI];
             RenderApp? Default = w.AvailableApps.Find(a => a.Default == true);
             <tr>
                 <td style="border: 5px solid; width: 120px; text-align: center;"> @w.name </td>
                 <td style="border: 5px solid; width: 120px; text-align: center;">@StatusDecode(w.Status) </td>
-                <td style="border: 5px solid; width: 180px; text-align: center;">@w.WorkerID</td>
+                <td style="border: 5px solid; width: 180px; text-align: center;">@w.ID</td>
                 <td style="border: 5px solid; width: 180px; text-align: center;"> @w.lastSeen </td>
                 <td style="border: 5px solid; width: 40px; text-align: center;"><input type="button" class="extraButtons" style="width: 40px" value="Kill" @onclick="() => WorkerServer.killWorker(w)"/></td>
                 <td style="border: 5px solid;">

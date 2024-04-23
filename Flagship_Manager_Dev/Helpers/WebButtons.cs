@@ -20,8 +20,8 @@ namespace FlagShip_Manager.Helpers
         {
             //Moves job from Archive to Active queue.
 
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
-            j.selected = false;
+            int jI = DB.FindJobIndex(DB.archive, _ID);
+            var j = DB.archive[jI];
             j.Archive = false;
             j.ArchiveDate = DateTime.MaxValue;
             if (!j.finished)
@@ -33,8 +33,10 @@ namespace FlagShip_Manager.Helpers
                     rt.Status = 0;
                 }
             }
-            if(!jobManager.ActiveIDList.Contains(_ID))jobManager.ActiveIDList.Add(_ID);
-            jobManager.ArchiveIDList.Remove(_ID);
+            j.ID = DB.NextActive();
+            DB.active.Add(j);
+            DB.archive.RemoveAt(jI);
+            DB.removeArchive.Add(j.ID);
         }
         public static void ResumeJob(int _ID)
         {
@@ -102,18 +104,19 @@ namespace FlagShip_Manager.Helpers
             j.EndTimes.Add(DateTime.Now);
             j.Status = 5;
         }
-        public static void RestartJob(int _ID)
+        public static void RestartJob(int _ID, bool archive = false)
         {
             //Restarts job from begining. If any renderTasks are active cancel requests are sent to workers. 
             //TODO: Most of this should become a class method.
+            Job j;
+            if (archive) j = DB.FindJob(DB.archive, _ID);
+            else j = DB.FindJob(DB.active, _ID);
 
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
-            j.selected = false;
             DateTime start = DateTime.Now;
             j.SetOutputOffset();
             foreach (var rt in j.renderTasks)
             {
-                if (rt.Status == 1) WorkerServer.cancelWorker(WorkerServer.WorkerList.Find(w => w.WorkerID == rt.taskLogs.WorkerIDs.Last()), false, false);
+                if (rt.Status == 1) WorkerServer.cancelWorker(rt.Worker(), false, false);
                 rt.reset();
             }
             j.Archive = false;
@@ -133,25 +136,29 @@ namespace FlagShip_Manager.Helpers
             j.ArchiveDate = DateTime.MaxValue;
             j.TimePerFrame = 0;
         }
-        public static void RestartTask(int _JID, int _TID)
+        public static void RestartTask(int _JID, int _rI, bool archive)
         {
             //Restarts a single renderTask, removes progress from Job.
             //If Job is in archive queue, it is returned to active queue.
 
-            Job j = jobManager.jobList[jobManager.jobList.FindIndex(job => job.ID == _JID)];
-            j.selected = false;
-            renderTask rT = j.renderTasks[_TID];
+
+            Job j;
+            
+            if (archive) j = DB.FindJob(DB.archive, _JID);
+            else j = DB.FindJob(DB.active, _JID);
+
+
+            renderTask rT = j.renderTasks[_rI];
 
             float ProgressPerTask = 100 / j.renderTasks.Count();
             if (rT.progress > 0 && rT.Status != 2) j.Progress -= (ProgressPerTask / 100) * rT.progress;
             else if (rT.Status == 2) j.Progress -= (float)Math.Round(ProgressPerTask);
             rT.reset();
+            
             j.finished = false;
-            if (j.Status != 1) j.Status = 0;
+            j.Status = 0;
             if (j.Archive)
             {
-                jobManager.ArchiveIDList.Remove(j.ID);
-                jobManager.ActiveIDList.Add(j.ID);
                 j.Archive = false;
                 j.ArchiveDate = DateTime.MaxValue;
             }

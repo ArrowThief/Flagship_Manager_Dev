@@ -1,5 +1,6 @@
 ﻿@using FlagShip_Manager;
 @using FlagShip_Manager.Objects;
+@using FlagShip_Manager.Management_Server;
 @using System.Text.RegularExpressions;
 @using System.Timers
 @inject IJSRuntime RunJS
@@ -108,16 +109,16 @@
 
 <div id="jl1">
 
-    @foreach(Worker W in WorkerServer.WorkerList){
-        var labelID = W.WorkerID + "l";
-        var IDdouble = W.WorkerID + "b";
-        var statusID = W.WorkerID + "s";
+    @foreach(Worker W in DB.workers){
+        var labelID = W.ID + "l";
+        var IDdouble = W.ID + "b";
+        var statusID = W.ID + "s";
         RenderApp? Default = W.AvailableApps.Find(a => a.Default == true);
     
         <div style="background: #424242; width: 100%; height:32px; clear: both; z-index:0">
 
             <div id="@IDdouble" class="WI_cell" style=" width:150px; z-index:10;">
-                <div id="@W.WorkerID" class="ExpandingName" @onmouseover='() => JSFunctiion(W.WorkerID, "ShowExtendedName")'  @onmouseout='() => JSFunctiion(W.WorkerID, "HideExtendedName")'>
+                <div id="@W.ID" class="ExpandingName" @onmouseover='() => JSFunctiion(W.ID, "ShowExtendedName")'  @onmouseout='() => JSFunctiion(W.ID, "HideExtendedName")'>
                     
                     <!--Worker Name-->
 

@@ -81,8 +81,9 @@
 
 <div id="@TLID" class="TaskList">
     @if (Count > 0)Count = 1;
-    @foreach (renderTask t in RenderTasks)
+    @for (int rI = 0; rI < RenderTasks.Length; rI++)
     {
+        renderTask t = RenderTasks[rI];
         <div style="font-size: 14px; height:30px; display:table-row;">
             @if (t.Attempt(false) < 1)//Task has 0 attempts
             {
@@ -97,7 +98,7 @@
                     
                 <div class="taskCell" style="width: 100px;">
                     <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() => OpenLogView(t)"><img style="width:18px" src="/Images/Icons/log icon inverted.png" /></button>
-                    <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() =>{ WebButtons.RestartTask(JID, t.ID); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
+                    <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() =>{ WebButtons.RestartTask(JID, rI, Archive); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
                 </div>
             }
             else//Task has at least one attempt.
@@ -123,7 +124,7 @@
 
                 <div class="taskCell" style="width: 100px;">
                     <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() => OpenLogView(t)"><img style="width:18px" src="/Images/Icons/log icon inverted.png" /></button>
-                    <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() =>{ WebButtons.RestartTask(JID, t.ID); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
+                    <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() =>{ WebButtons.RestartTask(JID, rI, Archive); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
                 </div>
             }
         </div>
@@ -135,6 +136,8 @@
 
 
 @code {
+    [Parameter]
+    public bool Archive { get; set; } = false;
     [Parameter]
     public int Count { get; set; } = 1;
     [Parameter]
