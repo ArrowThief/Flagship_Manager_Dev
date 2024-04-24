@@ -111,63 +111,56 @@ namespace FlagShip_Manager.Management_Server
             //If RenderTasks were active, Output files are checked. If files are missing or corrupt A thread is created calling RenderTask.taskFail(). 
 
             int finishCount;
-            if (_DB == null) return;
-            if (_DB.ActiveJobs != null)
+            if (_DB == null || _DB.ActiveJobs == null) return;
+
+            foreach (Job j in _DB.ActiveJobs)
             {
-                foreach (Job j in _DB.ActiveJobs)
+                finishCount = 0;
+                List<Thread> Failthreads = new List<Thread>();
+                foreach (renderTask t in j.renderTasks)
                 {
-
-                    finishCount = 0;
-                    List<Thread> Failthreads = new List<Thread>();
-                    foreach (renderTask t in j.renderTasks)
+                    int LogIndex = t.taskLogs.Attempt();
+                    if (LogIndex > 4)
                     {
-                        int LogIndex = t.taskLogs.Attempt();
-                        if (LogIndex > 4)
-                        {
-                            t.Status = 4;
-                            j.Status = 4;
-                        }
-                        if (t.Status == 1)
-                        {
-                            if (j.CheckFiles(t, true))
-                            {
-                                t.Status = 2;
-                                if (t.taskLogs.CurrentWorker == null && LogIndex > 0)
-                                {
-                                    t.taskLogs.removeLast();
-                                    LogIndex--;
-                                }
-                                if (t.finishTime == DateTime.MinValue) t.finishTime = DateTime.Now;
-                                continue;
-                            }
-                            if (t.taskLogs.WorkerLog[LogIndex] != "" && t.progress != 100)
-                            {
-                                Failthreads.Add(new Thread(() => t.taskFail("\n\n JobFailed during server reboot. Moving to new attempt.")));
-                            }
-                            t.Status = 0;
-
-                        }
-                        else if (t.Status == 2)
-                        {
-                            finishCount++;
-                        }
+                        t.Status = 4;
+                        j.Status = 4;
                     }
-                    if (j.renderTasks.Length == finishCount)
+                    if (t.Status == 1)
                     {
-                        j.Status = 2;
-                        j.finished = true;
-                        j.Progress = 100;
-                        j.CompletedFrames = j.TotalFramesToRender;
+                        if (j.CheckFiles(t, true))
+                        {
+                            t.Status = 2;
+                            if (t.taskLogs.CurrentWorker == null && LogIndex > 0)
+                            {
+                                t.taskLogs.removeLast();
+                                LogIndex--;
+                            }
+                            if (t.finishTime == DateTime.MinValue) t.finishTime = DateTime.Now;
+                            continue;
+                        }
+                        if (t.taskLogs.WorkerLog[LogIndex] != "" && t.progress != 100)
+                        {
+                            t.taskFail("\n\n JobFailed during server reboot. Moving to new attempt.");
+                        }
+                        t.Status = 0;
+
                     }
-                    else if (j.Status == 1) j.Status = 0;
-                    active.Add(j);
-                    foreach (Thread fail in Failthreads)
+                    else if (t.Status == 2)
                     {
-                        fail.Start();
-                        Thread.Sleep(10);
+                        finishCount++;
                     }
                 }
+                if (j.renderTasks.Length == finishCount)
+                {
+                    j.Status = 2;
+                    j.finished = true;
+                    j.Progress = 100;
+                    j.CompletedFrames = j.TotalFramesToRender;
+                }
+                else if (j.Status == 1) j.Status = 0;
+                active.Add(j);
             }
+            
             if (_DB.ActiveJobs != null) active = _DB.ActiveJobs.ToList();
             if (_DB.ArchiveJobs != null) active = _DB.ArchiveJobs.ToList();
 
@@ -218,16 +211,70 @@ namespace FlagShip_Manager.Management_Server
         }
         public static int NextActive()
         {
+            //Returns the next activeID and increeses the ID by 1.
             return activeID++;
         }
         public static int NextArchive()
         {
-            return activeID++;
+            //Returns the next archiveID and increeses the ID by 1.
+            return archiveID++;
         }
         public static int NextWorker(bool peek = false)
         {
+            //Returns the next workerID and increeses the ID by 1.
+            //Allso allows for peeking at current ID.
+
             if (peek) return workerID;
             else return workerID++;
+        }
+        public static void AddToActive(Job addJob, bool fromArchive = false)
+        {
+            //Gives Job new active list ID and adds to active list. 
+            //If fromArchive is true, job is found in archive and removed before being added to active. 
+            
+            addJob.ID = NextActive();
+            if (fromArchive)
+            {
+                int index = FindJobIndex(archive, addJob.ID);
+                archive.RemoveAt(index);
+                addJob.ArchiveDate = DateTime.MaxValue;
+                addJob.Archive = false; 
+
+                removeArchive.Add(addJob.ID);
+            }
+            active.Add(addJob);
+            
+        }
+        public static void AddToArchive(Job addJob)
+        {
+            //Removes job from active list, assigns a new archive ID and archive Date,then adds to archive list. 
+
+            if (addJob.Status == 0 || addJob.Status == 1 || addJob.Status == 3) addJob.Cancel();
+
+            addJob.ID = NextArchive();
+            addJob.ArchiveDate = DateTime.Now;
+            addJob.Archive = true;
+
+            int index = FindJobIndex(active, addJob.ID);
+            active.RemoveAt(index);
+
+            removeActive.Add(addJob.ID);
+            archive.Add(addJob);
+
+        }
+        public static void RemoveJob(Job remove)
+        {
+            int index = FindJobIndex(archive, remove.ID);
+            archive.RemoveAt(index);
+            try
+            {
+                File.Delete(remove.Project);
+                File.Delete($"{jobManager.ActiveSettings.CtlFolder}\\Archive\\{remove.Name}.txt");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Unable to remove project file. \n"+ex.ToString());
+            }
         }
         internal static Job? FindJob(List<Job> searchList, int target)
         {

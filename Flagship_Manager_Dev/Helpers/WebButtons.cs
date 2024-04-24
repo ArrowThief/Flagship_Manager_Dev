@@ -7,202 +7,71 @@ namespace FlagShip_Manager.Helpers
     {
         //UI buttons class.
 
-        public static void ReturnAndRestartJob(int _ID)
+        public static void ReturnAndRestartJob(Job j)
         {
             //Moves job from Archive to Active queue and restarts it.
 
-            jobManager.ActiveIDList.Add(_ID);
-            jobManager.ArchiveIDList.Remove(_ID);
-            RestartJob(_ID);
-
+            RestartJob(j);
+            DB.AddToActive(j, true);
         }
-        public static void ReturnJobtoQueue(int _ID)
+        public static void ReturnJobToQueue(Job j)
         {
             //Moves job from Archive to Active queue.
-
-            int jI = DB.FindJobIndex(DB.archive, _ID);
-            var j = DB.archive[jI];
-            j.Archive = false;
-            j.ArchiveDate = DateTime.MaxValue;
+            
             if (!j.finished)
             {
                 j.Status = 0;
                 foreach (var rt in j.renderTasks)
                 {
-                    if (rt.Status == 2) continue;
-                    rt.Status = 0;
+                    if (rt.Status != 2) rt.Status = 0;
                 }
             }
-            j.ID = DB.NextActive();
-            DB.active.Add(j);
-            DB.archive.RemoveAt(jI);
-            DB.removeArchive.Add(j.ID);
+            DB.AddToActive(j, true);
         }
-        public static void ResumeJob(int _ID)
-        {
-            //Resumes a paused job.
-
-            var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
-            Job j = jobManager.jobList[JobIndex];
-            j.selected = false;
-            foreach (var rt in j.renderTasks)
-            {
-                if (rt.Status == 2) continue;
-                rt.Status = 0;
-            }
-            j.Status = 0;
-            j.PauseRequest = false;
-        }
-        public static void PauseJob(int _ID)
+        public static void PauseJob(Job j)
         {
             //Pauses Job. Also cancels any active tasks. 
 
-            var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
-            Job j = jobManager.jobList[JobIndex];
-            j.selected = false;
-            if (j.Status == 0 || j.Status == 1)
-            {
-                foreach (var rt in j.renderTasks)
-                {
-                    if (rt.Status == 1)
-                    {
-                        try
-                        {
-                            rt.taskLogs.WriteToWorker($"\n-------------------------------Worker Log end-------------------------------\nJob Paused. {rt.taskLogs.CurrentWorker()} set cancel request.");
-                            WorkerServer.cancelWorker(rt.Worker(), false, false);
-                        }
-                        catch (Exception e)
-                        {
-                            rt.taskLogs.WriteToWorker("Unable to cancel worker.");
-                            Console.WriteLine(e);
-                        }
-                        rt.ExistingFrames = rt.FinishedFrameNumbers.Count();
-                        rt.taskFail("Job Paused");
-                        rt.ExistingProgress = rt.progress;
-                    }
-                    else if (rt.Status == 2 || rt.progress > 99) continue;
-                }
-                j.PauseRequest = true;
-                j.Status = 3;
-            }
-            else return;
+            j.PauseOrResume();
         }
-        public static void CancelJob(int _ID)
+        public static void CancelJob(Job j)
         {
             //Cancels job. If any renderTasks are active cancel requests are sent to workers.
 
-            var JobIndex = jobManager.jobList.FindIndex(job => job.ID == _ID);
-            Job j = jobManager.jobList[JobIndex];
-            j.selected = false;
-            foreach (var rt in j.renderTasks)
-            {
-                if (rt.FinishReported) continue;
-                if (rt.Status == 1)rt.taskFail("Render Cancel Requested.", true);
-                else if (rt.Status == 2) continue;
-                rt.Status = 5;
-            }
-            j.EndTimes.Add(DateTime.Now);
-            j.Status = 5;
+            j.Cancel();
         }
-        public static void RestartJob(int _ID, bool archive = false)
+        public static void RestartJob(Job j)
         {
             //Restarts job from begining. If any renderTasks are active cancel requests are sent to workers. 
-            //TODO: Most of this should become a class method.
-            Job j;
-            if (archive) j = DB.FindJob(DB.archive, _ID);
-            else j = DB.FindJob(DB.active, _ID);
-
-            DateTime start = DateTime.Now;
-            j.SetOutputOffset();
-            foreach (var rt in j.renderTasks)
-            {
-                if (rt.Status == 1) WorkerServer.cancelWorker(rt.Worker(), false, false);
-                rt.reset();
-            }
-            j.Archive = false;
-            j.finished = false;
-            j.fail = false;
-            j.ShotAlert = false;
-            j.CompletedFrames = 0;
-
-            j.Status = 0;
-            j.CreationTime = start;
-            j.Progress = 0;
-            j.MachineHours = TimeSpan.Zero;
-            j.RemainingTime = TimeSpan.Zero;
-            j.totalActiveTime = TimeSpan.Zero;
-            j.StartTimes.Clear();
-            j.EndTimes.Clear();
-            j.ArchiveDate = DateTime.MaxValue;
-            j.TimePerFrame = 0;
+            
+            j.Restart();
         }
-        public static void RestartTask(int _JID, int _rI, bool archive)
+        public static void RestartTask(Job j, int _rI)
         {
             //Restarts a single renderTask, removes progress from Job.
             //If Job is in archive queue, it is returned to active queue.
 
-
-            Job j;
-            
-            if (archive) j = DB.FindJob(DB.archive, _JID);
-            else j = DB.FindJob(DB.active, _JID);
-
-
-            renderTask rT = j.renderTasks[_rI];
-
-            float ProgressPerTask = 100 / j.renderTasks.Count();
-            if (rT.progress > 0 && rT.Status != 2) j.Progress -= (ProgressPerTask / 100) * rT.progress;
-            else if (rT.Status == 2) j.Progress -= (float)Math.Round(ProgressPerTask);
-            rT.reset();
-            
-            j.finished = false;
-            j.Status = 0;
-            if (j.Archive)
-            {
-                j.Archive = false;
-                j.ArchiveDate = DateTime.MaxValue;
-            }
-
+            j.renderTasks[_rI].Restart();
         }
-        public static void RemoveJob(int _ID)
+        public static void RemoveJob(Job j)
         {
             //Removes job from Archive queue. 
             //Also deletes Project file from storage.
+            
+            DB.RemoveJob(j);
 
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
-            j.selected = false;
-            jobManager.ArchiveIDList.Remove(_ID);
-            if (File.Exists(j.Project))
-            {
-                try
-                {
-                    File.Delete(j.Project);
-                }
-                catch
-                {
-                    Console.WriteLine("Cannot remove project file. it will remain on server.");
-                }
-            }
-            jobManager.jobList.Remove(j);
         }
-        public static void ArchiveJob(int _ID)
+        public static void ArchiveJob(Job j)
         {
         
             //Moves job from Active Queue to Archive. 
             //If any renderTasks are active, cancel requests are sent to workers.
-            
-            var j = jobManager.jobList.Find(job => job.ID == _ID);
-            j.selected = false;
-            if (j.Status == 0 || j.Status == 1 || j.Status == 3) CancelJob(_ID);
-            j.Archive = true;
-            j.ArchiveDate = DateTime.Now;
-            jobManager.ActiveIDList.Remove(_ID);
-            if(!jobManager.ArchiveIDList.Contains(_ID))jobManager.ArchiveIDList.Add(_ID);
-            
+           
+            DB.AddToArchive(j); 
         }
         
        
-        public static void RunAction(int Command, int[] Selected)
+        public static void RunAction(int Command, Job[] Selected)
         {
             //Method simplifies action calling for button presses.
 
@@ -217,34 +86,34 @@ namespace FlagShip_Manager.Helpers
             // 8:Return to Queue
 
 
-            foreach (int JID in Selected)
+            foreach (Job j in Selected)
             {
                 switch (Command)
                 {
 
                     case (1):
-                        CancelJob(JID);
+                        CancelJob(j);
                         break;
                     case (2):
-                        PauseJob(JID);
+                        PauseJob(j);
                         break;
                     case (3):
-                        RestartJob(JID);
+                        RestartJob(j);
                         break;
                     case (4):
-                        ReturnAndRestartJob(JID);
+                        ReturnAndRestartJob(j);
                         break;
                     case (5):
-                        ArchiveJob(JID);
+                        ArchiveJob(j);
                         break;
                     case (6):
-                        ResumeJob(JID);
+                        PauseJob(j);
                         break;
                     case (7):
-                        RemoveJob(JID);
+                        RemoveJob(j);
                         break;
                     case (8):
-                        ReturnJobtoQueue(JID);
+                        ReturnJobToQueue(j);
                         break;
                 }
             }

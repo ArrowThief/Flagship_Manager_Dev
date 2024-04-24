@@ -46,7 +46,6 @@ namespace FlagShip_Manager.Objects
         //Metadata for render logic.
         public string FileFormat { get; set; } = "";
         public int ID { get; set; } = -1;
-        public bool PauseRequest { get; set; } = false;
         public int Status { get; set; } //Job/Task status. queued(0), Rendering(1), finished(2) paused(3), fialed(4), canceled(5).
         public bool fail { get; set; }
         public bool GPU { get; set; }
@@ -64,6 +63,60 @@ namespace FlagShip_Manager.Objects
         public bool UpdateUI { get; set; } = false;
         public double SmallestFile { get; set; } = -1;
 
+        internal void Restart()
+        {
+            SetOutputOffset();
+            foreach (var rt in renderTasks)
+            {
+                if (rt.Status == 1) WorkerServer.cancelWorker(rt.Worker(), false, false);
+                rt.Restart();
+            }
+            Archive = false;
+            finished = false;
+            fail = false;
+            ShotAlert = false;
+            CompletedFrames = 0;
+            Status = 0;
+            CreationTime = DateTime.Now;
+            Progress = 0;
+            MachineHours = TimeSpan.Zero;
+            RemainingTime = TimeSpan.Zero;
+            totalActiveTime = TimeSpan.Zero;
+            StartTimes.Clear();
+            EndTimes.Clear();
+            TimePerFrame = 0;
+            if (Archive)
+            {
+                DB.AddToActive(this, true);
+            }
+        }
+        internal void Cancel()
+        {
+            foreach (var rt in renderTasks)
+            {
+                if (rt.FinishReported) continue;
+                if (rt.Status == 1)
+                {
+                    try
+                    {
+                        rt.taskLogs.WriteToWorker($"\n-------------------------------Worker Log end-------------------------------\nJob Canceled. {rt.Worker().name} set cancel request.");
+                        WorkerServer.cancelWorker(rt.Worker(), false, false);
+                    }
+                    catch (Exception e)
+                    {
+                        rt.taskLogs.WriteToWorker("Unable to cancel worker.");
+                        Console.WriteLine(e);
+                    }
+                    rt.ExistingFrames = rt.FinishedFrameNumbers.Count();
+                    rt.taskFail("Job Canceled");
+                    rt.ExistingProgress = rt.progress;
+                }
+                else if (rt.Status == 2) continue;
+                rt.Status = 5;
+            }
+            EndTimes.Add(DateTime.Now);
+            Status = 5;
+        }
         public void getProgress()
         {
             //Updates Job progress info. 
@@ -149,13 +202,7 @@ namespace FlagShip_Manager.Objects
                 JobsDone();
                 return;
             }
-
-            if (PauseRequest)
-            {
-                //Pause
-
-                Status = 3;
-            }
+            else if (Status == 3) return;
             else if (renderTasks.Any(t => t.Status == 1))
             {
                 //Tasks are rendering
@@ -477,6 +524,43 @@ namespace FlagShip_Manager.Objects
             }
             else Console.WriteLine("Output folder exists.");
 
+        }
+
+        internal void PauseOrResume()
+        {
+            if(Status == 3)
+            {
+                foreach (var rt in renderTasks)
+                {
+                    //If renderTask isn't finished, set status to queued. 
+                    if (rt.Status != 2) rt.Status = 0;
+                }
+                Status = 0;
+
+            }
+            else if (Status == 0 || Status == 1)
+            {
+                foreach (var rt in renderTasks)
+                {
+                    if (rt.Status == 1)
+                    {
+                        try
+                        {
+                            rt.taskLogs.WriteToWorker($"\n-------------------------------Worker Log end-------------------------------\nJob Paused. {rt.Worker().name} set cancel request.");
+                            rt.taskFail("Job Paused", true);
+                        }
+                        catch (Exception e)
+                        {
+                            rt.taskLogs.WriteToWorker("Unable to cancel worker.");
+                            Console.WriteLine(e);
+                        }
+                        rt.ExistingFrames = rt.FinishedFrameNumbers.Count(); ;
+                        rt.ExistingProgress = rt.progress;
+                    }
+                    else if (rt.Status == 2 || rt.progress > 99) continue;
+                }
+                Status = 3;
+            }
         }
     }
 }

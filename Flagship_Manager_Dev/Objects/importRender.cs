@@ -85,7 +85,6 @@ namespace FlagShip_Manager.Objects
             else newJob.Overwrite = Convert.ToBoolean(OW);
             newJob.QueueIndex = QueueIndex;
             newJob.vid = vid;
-            newJob.ID = DB.NextActive();
             newJob.WorkerBlackList = new List<int>();
             newJob.RenderApp = RenderApp.ToLower();
             newJob.Status = 0;

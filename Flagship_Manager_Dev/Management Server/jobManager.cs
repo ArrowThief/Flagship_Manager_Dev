@@ -210,75 +210,73 @@ namespace FlagShip_Manager
             //TODO Someday: Rewrite AE and blender to somehow connect through tcpip. Possibly though Posting to a webaddress? 
 
             Regex ErrorCheck = new Regex(@"(ERROR)");
-            
+            string[] newFiles = new string[0];
+
             while (true)
             {
                 Thread.Sleep(1000);
 
                 try
                 {
-                    string[] newFiles = Directory.GetFiles(path);
-                    if (newFiles.Length > 0)
-                    {
-                        Parallel.ForEach(newFiles, _job =>
-                        {
-                            if (File.Exists(_job))
-                            {
-                                if (!ErrorCheck.IsMatch(_job))
-                                {
-                                    //creates Job object from Job file.
-
-                                    IList<importRender> imports = new List<importRender>();
-                                    using (var Stream = new StreamReader(_job))
-                                    {
-                                        imports = JsonSerializer.Deserialize<List<importRender>>(Stream.ReadToEnd());
-                                    }
-                                    foreach (importRender j in imports)
-                                    {
-                                        Job newJ = j.JsonToJob();
-                                        if (newJ.renderTasks.Length > 0)
-                                        {
-                                            DB.active.Add(newJ);
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine("Failed to import Job.");
-                                        }
-                                        
-                                        while (true)
-                                        {
-                                            //Checks if CtlFolder contains an Archive folder.
-                                            //Then checks if the Archive folder contains a file with the same name, if true appends a random number string and checks again. 
-
-                                            string ArchiveFilePath = Path.GetDirectoryName(_job) + "\\Archive\\" + j.Name + ".txt";
-                                            if (!File.Exists(ArchiveFilePath)) break;
-                                            else
-                                            {
-                                                ArchiveFilePath = Path.GetDirectoryName(_job) + "\\Archive\\" + j.Name + "_" + RandomNumberGenerator.GetInt32(9999) + ".txt";
-                                            }
-
-                                            try
-                                            {
-                                                File.Move(_job, ArchiveFilePath);
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                Console.WriteLine(ex.ToString());
-                                            }
-
-                                            DB.UpdateDBFile = true;
-                                        }
-                                    }
-                                }
-                                else { Console.WriteLine("Failed error check."); }   
-                            }
-                        });
-                    }
+                    newFiles = Directory.GetFiles(path);
                 }
                 catch
                 {
                     Console.WriteLine($"Unable to read from {path}.");
                 }
+                if (newFiles.Length > 0)
+                {
+                    foreach (string _job in newFiles)
+                    {
+                        {
+                            if (!ErrorCheck.IsMatch(_job))
+                            {
+                                //creates Job object from Job file.
+
+                                IList<importRender> imports = new List<importRender>();
+                                using (var Stream = new StreamReader(_job))
+                                {
+                                    imports = JsonSerializer.Deserialize<List<importRender>>(Stream.ReadToEnd());
+                                }
+                                foreach (importRender j in imports)
+                                {
+                                    Job newJ = j.JsonToJob();
+                                    if (newJ.renderTasks.Length > 0)
+                                    {
+                                        DB.AddToActive(newJ);
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Failed to import Job.");
+                                    }
+                                    string ArchiveFilePath = Path.GetDirectoryName(_job) + "\\Archive\\" + j.Name + ".txt";
+
+                                    while (File.Exists(ArchiveFilePath))
+                                    {
+                                        //If file exists in Archive folder with the same name then a random number is appended to end until a unique file name is created. 
+
+                                        ArchiveFilePath = Path.GetDirectoryName(_job) + "\\Archive\\" + j.Name + "_" + RandomNumberGenerator.GetInt32(9999) + ".txt";
+                                    }
+                                    try
+                                    {
+                                        File.Move(_job, ArchiveFilePath);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine(ex.ToString());
+                                    }
+
+                                    DB.UpdateDBFile = true;
+                                }
+                                
+                            }
+                            else 
+                            {
+                                Console.WriteLine("Failed error check."); 
+                            }
+                        }
+                    }
+                } 
             }
         }
         

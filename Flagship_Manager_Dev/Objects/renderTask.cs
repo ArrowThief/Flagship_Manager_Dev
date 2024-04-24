@@ -34,7 +34,7 @@ namespace FlagShip_Manager.Objects
         public DateTime LastFail { get; set; } = DateTime.MinValue;
         public bool FinishReported { get; set; } = false;
 
-        public void reset()
+        public void Restart()
         {
             //Resets renderTask status.
 
@@ -48,6 +48,17 @@ namespace FlagShip_Manager.Objects
             taskLogs.ArhiveAndClear();
             progress = 0;
             FinishedFrameNumbers.Clear();
+
+            float ProgressPerTask = 100 / ParentJob.renderTasks.Count();
+            if (progress > 0 && Status != 2) ParentJob.Progress -= (ProgressPerTask / 100) * progress;
+            else if (Status == 2) ParentJob.Progress -= (float)Math.Round(ProgressPerTask);
+            ParentJob.finished = false;
+            Status = 0;
+            if (ParentJob.Archive)
+            {
+                DB.AddToActive(ParentJob);
+            }
+
 
         }
         public int Attempt(bool Index = true)

@@ -1,4 +1,6 @@
-﻿@using FlagShip_Manager.Helpers
+﻿@using FlagShip_Manager.Helpers;
+@using FlagShip_Manager.Objects;
+@using FlagShip_Manager.Management_Server;
 @*
     Buttons for controlling Job status
 *@
@@ -35,55 +37,70 @@
 
 </style>
 
-@if(!Archive)
+@if(!activeJob.Archive)
 {
     <div class="TableCell" style="width: 10px;"></div>
-    <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideCancelButton(_Status)" @onclick="() => RunSingleAction(1,_JID)">Cancel</button></div>
+    
+    <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideCancelButton(_Status)" @onclick="() => { 
+        activeJob.Cancel();
+        CheckID.InvokeAsync(activeJob);
+    }">Cancel</button></div>
+    
     @if (_Status == 3 || _Status == 5)
     {
-        <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideResumeButton(_Status)" @onclick="() => RunSingleAction(6,_JID)">Resume</button></div>
+        <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideResumeButton(_Status)" @onclick="() => {
+            activeJob.PauseOrResume();
+            CheckID.InvokeAsync(activeJob);
+        }">Resume</button></div>
     }
     else
     {
-        <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideCancelButton(_Status)" @onclick="() => RunSingleAction(2,_JID)">Pause</button></div>
+        <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideCancelButton(_Status)" @onclick="() => {
+            activeJob.PauseOrResume();
+            CheckID.InvokeAsync(activeJob);
+        }">Pause</button></div>
     }
-    <div class="TableCell"><button class="JobButtons" @onclick="() => RunSingleAction(3,_JID)">Restart</button></div>
-    <div class="TableCell"><button class="JobButtons" @onclick="() => RunSingleAction(5,_JID)">Archive</button></div>
+    <div class="TableCell"><button class="JobButtons" @onclick="() => {
+        activeJob.Restart();
+        CheckID.InvokeAsync(activeJob);
+    }">Restart</button></div>
+    
+    <div class="TableCell"><button class="JobButtons" @onclick="() => {
+        DB.AddToArchive(activeJob);
+        CheckID.InvokeAsync(activeJob);
+    }">Archive</button></div>
 }
 else
 {
     <div class="TableCell" style="width: 80px;"></div>
-    <div class="TableCell"><button class="JobButtons" @onclick="() => RunSingleAction(8,_JID)">Re-Queue</button></div>
-    <div class="TableCell"><button class="JobButtons" @onclick="() => RunSingleAction(4,_JID)">Restart</button></div>
-    <div class="TableCell"><button class="JobButtons" @onclick="() => RunSingleAction(7,_JID)">Delete</button></div>
+    <div class="TableCell"><button class="JobButtons" @onclick="() => {
+        ReturnJobToQueue(activeJob);
+        CheckID.InvokeAsync(activeJob);
+        }">Re-Queue</button></div>
+    
+    <div class="TableCell"><button class="JobButtons" @onclick="() => {
+        activeJob.Restart(); 
+        DB.AddToActive(activeJob, true);
+        CheckID.InvokeAsync(activeJob);
+    }">Restart</button></div>
+    
+    <div class="TableCell"><button class="JobButtons" @onclick="() => {
+        DB.RemoveJob(activeJob);
+        CheckID.InvokeAsync(activeJob);
+    }">Delete</button></div>
 }
 @code {
     [Parameter]
     public int _Status { get; set; } = 0;
     [Parameter]
-    public int _JID { get; set; } = 0;
-    [Parameter]
-    public bool Archive { get; set; } = false;
+    public Job activeJob { get; set; }
     [Parameter]
     public EventCallback UpdateList { get; set; }
     [Parameter]
-    public EventCallback<int> CheckID { get; set; }
+    public EventCallback<Job> CheckID { get; set; }
 
     public string ShowBatch { get; set; } = "block";
 
-
-    private async void RunSingleAction(int Action, int ID)
-    {
-        //Calls the webButton action.
-
-        int[] temp = new int[1];
-        temp[0] = ID;
-        await CheckID.InvokeAsync(ID);
-        WebButtons.RunAction(Action, temp);
-        UpdateList.InvokeAsync();
-        
-        
-    }
     public string ShowHideCancelButton(int _status)
     {
         //Toggles weither the Cancel button is visable depending on Job status.
@@ -97,6 +114,20 @@ else
 
         if (_status == 5 || _status == 3) return "visible";
         else return "hidden";
+    }
+    public static void ReturnJobToQueue(Job j)
+    {
+        //Moves job from Archive to Active queue.
+
+        if (!j.finished)
+        {
+            j.Status = 0;
+            foreach (var rt in j.renderTasks)
+            {
+                if (rt.Status != 2) rt.Status = 0;
+            }
+        }
+        DB.AddToActive(j, true);
     }
     
 }

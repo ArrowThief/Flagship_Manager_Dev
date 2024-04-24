@@ -245,9 +245,9 @@
                         <img style="opacity:.7;" src=@GetTypeIcon(J) width="20" />
                         <label style="font-size:14px; -webkit-text-fill-color: #E4E4E4;">@J.FileFormat</label>
                     </div>
-                    <Job_Buttons UpdateList="UpdateList" CheckID="RemoveActiveChecked" Archive="J.Archive" _Status="J.Status" _JID="J.ID"></Job_Buttons>
+                    <Job_Buttons UpdateList="UpdateList" CheckID="RemoveActiveChecked" _Status="J.Status" activeJob="J"></Job_Buttons>
                     <div class="TableCell" style="width:50px; position:relative; top:5px;">
-                        <input id="@CBID" style="accent-color:#1E1E1E;" type="checkbox" @onchange="()=> AddorRemoveActiveChecked(J.ID)" />
+                        <input id="@CBID" style="accent-color:#1E1E1E;" type="checkbox" @onchange="()=> AddorRemoveActiveChecked(J)" />
                     </div>
 
                 </div>
@@ -271,7 +271,7 @@
                         <div style="display:inline-flex;">
 
                             <div>
-                                <Job_TaskList UpdateJob="UpdateList" LogViewCall="OpenLogView" RenderTasks="@J.renderTasks.ToArray()" JID="@J.ID" CreationTime="@J.CreationTime"></Job_TaskList>
+                                <Job_TaskList UpdateJob="UpdateList" LogViewCall="OpenLogView" RenderTasks="@J.renderTasks.ToArray()" CreationTime="@J.CreationTime"></Job_TaskList>
                             </div>
                             <div>
                                 <Job_BlackList UpdateJob="UpdateList" Status="@J.Status" GPUrequired="@J.GPU" JID="@J.ID" renderApp="@J.RenderApp" idBlackList="@J.WorkerBlackList" ShowButton="@J.finished"></Job_BlackList>
@@ -324,28 +324,28 @@
     [Parameter]
     public EventCallback FullUpdate { get; set; }
     [Parameter]
-    public EventCallback<string> CheckID { get; set; }
+    public EventCallback<Tuple<Job, bool>> CheckID { get; set; }
 
     Dictionary<string, string> apps = new Dictionary<string, string>()
     {
-        {"ae",@"Images/App/AE.png" },               //AfterEffects Icon
+        {"ae",@"Images/App/AE.png"},               //AfterEffects Icon
         {"blender", @"Images/App/blender.png"},     //Blender Icon
         {"fusion", @"Images/App/fusion.png"}        //Fusion Icon
     };
     Dictionary<int, string> StatusIcon = new Dictionary<int, string>(){
 
-        {0,"Images/Status/Queueue_whitey.png" },    //Queued
-        {1, "Images/Status/Render_Whitey.png" },    //Rendering
-        {2, "Images/Status/Finished_Whitey.png" },  //Finished
-        {3, "Images/Status/Pause_whitey.png" },     //Paused
-        {4, "Images/Status/Failed_whitey.png" },    //Failed
-        {5, "Images/Status/Cancelled_whitey.png" }, //Cancelled
-        {6, "Images/Status/Failed_whitey.png" }     //Failed
+        {0,"Images/Status/Queueue_whitey.png"},    //Queued
+        {1, "Images/Status/Render_Whitey.png"},    //Rendering
+        {2, "Images/Status/Finished_Whitey.png"},  //Finished
+        {3, "Images/Status/Pause_whitey.png"},     //Paused
+        {4, "Images/Status/Failed_whitey.png"},    //Failed
+        {5, "Images/Status/Cancelled_whitey.png"}, //Cancelled
+        {6, "Images/Status/Failed_whitey.png"}     //Failed
     };
     Dictionary<int, string> StatusColor = new Dictionary<int, string>()
     {
-        {0, "#7E469E" },
-        {1,"#547AB5" },
+        {0,"#7E469E"},
+        {1,"#547AB5"},
         {2,"#09B18A"},
         {3,"#C78753"},
         {4,"#C36670"},
@@ -393,28 +393,27 @@
             remove = DB.removeActive;
         }
 
-        foreach(int id in remove)
+        for(int i = 0; i < remove.Count(); i++)
         {
             //Removes any Jobs in remove List
 
-            int Index = DB.FindJobIndex(JobList, id);
-            if (Index > -1) JobList.Remove(DB.FindJob(JobList, id));
+            int Index = DB.FindJobIndex(JobList, remove[i]);
+            if (Index > -1) JobList.Remove(DB.FindJob(JobList, remove[i]));
             else Console.WriteLine("Failed to find Job Index");
         }
 
         //Clear remove list
         remove.Clear();
 
-        if(JobList.Count() < temp.Count())
+        if (JobList.Count() < temp.Count())
         {
             //Adds any new Jobs from The DB joblist to the UI Job list.
-            
-            for(int i = JobList.Count(); i < temp.Count(); i++)
+
+            for (int i = JobList.Count(); i < temp.Count(); i++)
             {
                 JobList.Add(temp[i]);
-            }    
+            }
         }
-
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -451,22 +450,18 @@
         await FullUpdate.InvokeAsync();
         await InvokeAsync(() => StateHasChanged());
     }
-    private async Task AddorRemoveActiveChecked(int _ID)
+    private async Task AddorRemoveActiveChecked(Job j)
     {
-        //Adds or removes Job IDs from batch selected list. 
-        //TODO: HASHMAP
-
-        bool CheckValue = await JS.InvokeAsync<bool>("GetCheckboxValue", $"{_ID}");
-        string Send = $"{_ID},{CheckValue}";
-        await CheckID.InvokeAsync(Send);
+        //Adds or removes Job IDs from batch selected list.
+        
+        bool CheckValue = await JS.InvokeAsync<bool>("GetCheckboxValue", $"{j.ID}");
+        await CheckID.InvokeAsync(new Tuple<Job, bool>(j,CheckValue));
     }
-    private async Task RemoveActiveChecked(int _ID)
+    private async Task RemoveActiveChecked(Job j)
     {
-        //Removes Job ID from batch selected list. 
+        //Removes Job IDs from batch selected list.
 
-        await JSFunctiion("ChangeBarColor", _ID + "bar", "false");
-        string Send = $"{_ID},false";
-        await CheckID.InvokeAsync(Send);
+        await CheckID.InvokeAsync(new Tuple<Job, bool>(j, false));
     }
     protected void OpenLogView(renderTask _rT){
 
@@ -567,9 +562,8 @@
     {
         //Moves job to Archive List
 
-        if (!j.finished) WebButtons.CancelJob(j.ID);
-        DB.archive.Add(j);
-        DB.active.Remove(j);
+        if (!j.finished) WebButtons.CancelJob(j);
+        DB.AddToArchive(j);
 
         try
         {
