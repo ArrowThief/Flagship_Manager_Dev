@@ -74,7 +74,7 @@
 
 </style>
 @{
-    var BLID = JID + "BL";
+    var BLID = activeJob.ID + "BL";
 }
 
 <div id="@BLID" class="BlackList">
@@ -84,14 +84,14 @@
             <div style="display:table-row; height:31px;">
                 <div style="display:table-cell; width: 31px;">
                     <div class="CircleClass">
-                        @if (Status == 0 || Status == 1 || Status == 3)
+                        @if (activeJob.Status == 0 || activeJob.Status == 1 || activeJob.Status == 3)
                         {
                             <label>
-                                @if (idBlackList.Contains(w.ID))
+                                @if (activeJob.WorkerBlackList.Contains(w.ID))
                                 {
-                                    <input class="checkboxClass" type="checkbox" id="@w.ID" checked @onclick="() => AddorRemoveFromBlackList(w.ID, JID)">
+                                    <input class="checkboxClass" type="checkbox" id="@w.ID" checked @onclick="() => AddorRemoveFromBlackList(w.ID)">
                                 }else{
-                                    <input class="checkboxClass" type="checkbox" id="@w.ID" @onclick="() => AddorRemoveFromBlackList(w.ID, JID)">
+                                    <input class="checkboxClass" type="checkbox" id="@w.ID" @onclick="() => AddorRemoveFromBlackList(w.ID)">
                                 }
                                 <div class="label"></div>
                             </label>
@@ -101,7 +101,7 @@
                     </div>
                 </div>
                 <div style="display:table-cell; height:30px; vertical-align:central;">
-                    @if (idBlackList.Contains(w.ID))
+                    @if (activeJob.WorkerBlackList.Contains(w.ID))
                     {
                         <label class="WorkerLabel" style="">@GetReducedName(w.name)</label>
                     }
@@ -119,34 +119,25 @@
 
 @code {
     [Parameter]
-    public bool GPUrequired { get; set; }
-    [Parameter]
-    public int Status { get; set; }
-    [Parameter]
-    public int JID { get; set; }
-    [Parameter]
-    public List<int>? idBlackList { get; set; }
-    [Parameter]
-    public bool ShowButton { get; set; }
+    public Job activeJob { get; set; }
     [Parameter]
     public string? renderApp { get; set; } = "";
     [Parameter]
     public EventCallback UpdateJob { get; set; }
-    public void AddorRemoveFromBlackList(int _WID, int _JID)
+    public void AddorRemoveFromBlackList(int _WID)
     {
         //Toggles weither a Job is allowed to render a Job.
         //Also calls cancel on any renderTasks currently being rendered by a newly blacklisted worker.
 
-        Job? j = DB.FindJob(DB.active, _JID);
-        if (j.Status == 2 || j.Status == 4 || j.Status == 5) return;
-        if (j.WorkerBlackList.Contains(_WID))
+        if (activeJob.Status == 2 || activeJob.Status == 4 || activeJob.Status == 5) return;
+        if (activeJob.WorkerBlackList.Contains(_WID))
         {
             //If Worker is already blacklisted then remove from blacklist.
 
-            j.WorkerBlackList.Remove(_WID);
+            activeJob.WorkerBlackList.Remove(_WID);
             return;
         }
-        foreach (renderTask t in j.renderTasks)
+        foreach (renderTask t in activeJob.renderTasks)
         {
             if (t.taskLogs.WorkerIDs.Any(id => id == _WID) && t.Status != 2)
             {
@@ -168,7 +159,7 @@
                 }
             }
         }
-        if (!j.WorkerBlackList.Contains(_WID)) j.WorkerBlackList.Add(_WID);
+        if (!activeJob.WorkerBlackList.Contains(_WID)) activeJob.WorkerBlackList.Add(_WID);
         UpdateJob.InvokeAsync();
     }
 

@@ -69,7 +69,7 @@ namespace FlagShip_Manager.Objects
             foreach (var rt in renderTasks)
             {
                 if (rt.Status == 1) WorkerServer.cancelWorker(rt.Worker(), false, false);
-                rt.Restart();
+                rt.Restart(Archive, false);
             }
             Archive = false;
             finished = false;
@@ -116,6 +116,14 @@ namespace FlagShip_Manager.Objects
             }
             EndTimes.Add(DateTime.Now);
             Status = 5;
+        }
+        internal void AssignNewID(int newID)
+        {
+            foreach (var rt in renderTasks)
+            {
+                rt.parentID = newID;
+            }
+            ID = newID;
         }
         public void getProgress()
         {
@@ -525,10 +533,9 @@ namespace FlagShip_Manager.Objects
             else Console.WriteLine("Output folder exists.");
 
         }
-
         internal void PauseOrResume()
         {
-            if(Status == 3)
+            if(Status == 3 || Status == 5)
             {
                 foreach (var rt in renderTasks)
                 {

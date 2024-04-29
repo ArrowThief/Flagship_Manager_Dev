@@ -66,7 +66,7 @@
     }">Restart</button></div>
     
     <div class="TableCell"><button class="JobButtons" @onclick="() => {
-        DB.AddToArchive(activeJob);
+        DB.AddToArchive(activeJob, true);
         CheckID.InvokeAsync(activeJob);
     }">Archive</button></div>
 }

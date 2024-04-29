@@ -89,6 +89,7 @@ namespace FlagShip_Manager.Objects
             newJob.RenderApp = RenderApp.ToLower();
             newJob.Status = 0;
             newJob.CreationTime = DateTime.Now;
+            newJob.ID = DB.NextActive();
             newJob.renderTasks = GenerateSteppedTasks(newJob);
             newJob.ProgressPerFrame = 100 / (float)newJob.TotalFramesToRender;
             newJob.Priority = Priority;
@@ -142,7 +143,7 @@ namespace FlagShip_Manager.Objects
                     firstFrame += (AdjustedFrameCount * ParentJob.FrameStep);
                 }
                 nt.GenerateFrameCount(ParentJob.FrameStep);
-                nt.ParentJob = ParentJob;
+                nt.parentID = ParentJob.ID;
                 nt.finishTime = DateTime.MinValue;
                 nt.Status = 0;
                 nt.ProgressPerFrame = 100 / (float)nt.RenderFrameNumbers.Count();

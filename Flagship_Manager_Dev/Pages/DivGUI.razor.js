@@ -324,6 +324,8 @@ export function UpdateWorkerList() {
 }
 export function UpdateListHeights() {
     //Get list
+
+    console.log("Running UpdateList Heights");
     var Ar = document.getElementById("2h");
     var Arjl = document.getElementById("jl2");
     var Ac = document.getElementById("3h");
@@ -355,14 +357,24 @@ export function getInfo() {
     //calculate adjustment
     console.log("Ar Div height: " + ArHeight + "\nAr Job List height: " + ArjlHeight + "\nAc Div height: " + AcHeight + "\nAc Job List height: " + AcjlHeight);
 }
-export function CheckHeight(_Open) {
-    var V = (_Open === "True");
-    if (V)
+export function CheckHeight(arOpen, acOpen) {
+
+    if (arOpen)
     {
+        var Ar = document.getElementById("2h");
+        var Arjl = document.getElementById("jl2");
+        console.log((Ar.clientHeight - 32) + " vs " + Arjl.clientHeight);
+        if ((Ar.clientHeight - 32) < Arjl.clientHeight) {
+            console.log("Updating Archive List Height")
+            UpdateListHeights()
+        }
+    }
+    if (acOpen) {
         var Ac = document.getElementById("3h");
         var Acjl = document.getElementById("jl3");
+        console.log((Ac.clientHeight) + " vs " + Acjl.clientHeight);
         if ((Ac.clientHeight - 32) < Acjl.clientHeight) {
-            console.log("Updating List...")
+            console.log("Updating Active List Height")
             UpdateListHeights()
         }
     }

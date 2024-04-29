@@ -244,7 +244,7 @@
         </div>
     </div>
 
-    <button id="2b" class="ArchiveBar Animate" style="" @onclick='() =>  OpenCloseList("2")'>Archive: @CurrentArchiveCount</button>
+    <button id="2b" class="ArchiveBar Animate" style="" @onclick='() =>  OpenCloseList("2")'>Archive: @DB.archive.Count()</button>
     <div id="2h" class="Animate" style="overflow:hidden; display:block; height:0px;">
         <!--List height-->
         <div id="2p" class="Animate" style="position:relative; bottom:@AR_StartHeight;">
@@ -276,13 +276,14 @@
             <div class="Background" style=" display:block;">
                 <!--<DivArchiveJobUI></DivArchiveJobUI>-->
 
-                <Job_List FullUpdate="UpdateAll" CheckID="ArchiveSelectionChange" Archive="true"></Job_List>
+                <Job_List FullUpdate="UpdateAll"CheckID="ArchiveSelectionChange" Archive="true"></Job_List>
                
             </div>
         </div>
     </div>
         
-    <button id="3b" class="QueueBarOpen Animate" @onclick='() => OpenCloseList("3")'>Active Queue: @CurrentActiveCount</button>
+    <button id="3b" class="QueueBarOpen Animate" @onclick='() => OpenCloseList("3")'>Active Queue: @DB.active.Count()</button>
+
     <div id="3h" class="Animate" style="overflow:hidden; display:block; height:0px;">
         <div id="3p" class="Animate" style="position:relative; bottom:@AQ_StartHeight;">
             <div style="display:block; -webkit-text-fill-color: #E4E4E4; background:#1E1E1E; width:1550px; height: 36px;">
@@ -343,6 +344,9 @@
         </div>
     }
 </div>
+@{
+    UpdateHeights();
+}
 
 @code 
 {
@@ -351,15 +355,12 @@
     private string AR_StartHeight = (DB.archive.Count() * 36 + 36) + "px";
     private string AQ_StartHeight = (DB.active.Count() * 36 + 36) + "px";
 
-    private int CurrentWorkerCount;
-    private int CurrentArchiveCount;
-    private int CurrentActiveCount;
-
     private bool wOpen = false;
     private bool arOpen = false;
     private bool acOpen = false;
     private int JSFail = 0;
     private int SortIndex = 2;
+    private int NotFail = 0;
 
     private List<Job> ActiveSelection = new List<Job>();
     private List<Job> ArchiveSelection = new List<Job>();
@@ -373,27 +374,44 @@
         if (firstRender)
         {
             await BuildJS();
-            CurrentWorkerCount = DB.workers.Count();
-            CurrentArchiveCount = DB.archive.Count();
-            CurrentActiveCount = DB.active.Count();
-            time.Interval = 500;
+            time.Interval = 50;
             time.Elapsed += OnTimeInterval;
             time.AutoReset = true;
             // Start the timer.
             time.Enabled = true;
         }
     }
+    private void UpdateHeights()
+    {
+        try
+        {
+            if (wOpen)
+            {
+                JS.InvokeVoidAsync("UpdateWorkerList");
+            }
+            JS.InvokeVoidAsync("CheckHeight", arOpen, acOpen);
+
+        }
+        catch
+        {
+            Console.WriteLine("Couldn't update list heights");
+        }
+    }
     private async void OnTimeInterval(object sender, ElapsedEventArgs e)
     {
         //runs on timer interval. Every .5seconds
         //Updates UI with new information.
+        //Counts Javascript fails, if JS fails more than 10 times the JS thread will be assumed bad and be disposed. 
+        //Every 10 seconds the JS error counnter will be reduced by 1.
 
-        if (wOpen)
+        if (JSFail > 0)
         {
-            await JSFunctiion("UpdateWorkerList");
+            NotFail++;
+            if(NotFail >= 200){
+                JSFail--;
+                NotFail = 0;
+            }
         }
-
-        await JSFunctiion("CheckHeight", acOpen.ToString());
         await InvokeAsync(() => StateHasChanged());
     }
     public void Dispose()
@@ -440,7 +458,7 @@
             await JSFunctiion("SetElementOpacity", "31", "0");
             await JSFunctiion("EnableDisableElement", "31", "true");
         }
-        if (ActiveSelection.Count() == CurrentActiveCount)
+        if (DB.active.Count() > 0 && ActiveSelection.Count() == DB.active.Count())
         {
             await JSFunctiion("SetCheckValue", "3cb", "true");
         }
@@ -449,7 +467,6 @@
             await JSFunctiion("SetCheckValue", "3cb", "false");
         }
     }
-
     public async void ArchiveSelectionChange(Tuple<Job, bool> _Passed)
     {
         //Updates list of selected Jobs within Archive queue.
@@ -476,7 +493,7 @@
             await JSFunctiion("SetElementOpacity", "21", "0");
             await JSFunctiion("EnableDisableElement", "31", "true");
         }
-        if (ArchiveSelection.Count() == CurrentArchiveCount)
+        if (DB.archive.Count() > 0 && ArchiveSelection.Count() == DB.archive.Count())
         {
             await JSFunctiion("SetCheckValue", "2cb", "true");
         }
@@ -518,7 +535,7 @@
         catch (Exception Ex)
         {
             JSFail++;
-            if (JSFail > 3)
+            if (JSFail > 10)
             {
                 Console.WriteLine($"JS error disposing page.\nCurrent function call: {_function}\n\n{Ex}");
                 Dispose();
@@ -529,10 +546,11 @@
     {
         //Builds JS object. 
 
-        try {
+        try
+        {
             JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Pages/DivGUI.razor.js");
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine("Failed to define JS\n" + ex);
         }
@@ -620,9 +638,10 @@
     internal async Task OpenCloseList(string _ListID)
     {
         //Toggles lists open or closed.
+        //TODO: Replace string with Tuple
 
         string temp = "";
-        string[] At = temp.Split(",");
+        string[] At = new string[0];
         try
         {
             if (_ListID == "1")

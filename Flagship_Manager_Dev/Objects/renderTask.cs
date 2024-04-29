@@ -13,7 +13,7 @@ namespace FlagShip_Manager.Objects
 
         public TaskLogs taskLogs { get; set; } = new TaskLogs();
         public string LastLogLine { get; set; } = "";
-        public Job ParentJob { get; set; }
+        public int parentID { get; set; }
 
         //Job/Task status. queued(0), Rendering(1), finished(2) paused(3), fialed(4), canceled(5).
         public int Status { get; set; }
@@ -34,10 +34,16 @@ namespace FlagShip_Manager.Objects
         public DateTime LastFail { get; set; } = DateTime.MinValue;
         public bool FinishReported { get; set; } = false;
 
-        public void Restart()
+        public Job Parent(bool archive)
+        {
+            if(archive) return DB.archive[DB.FindJobIndex(DB.archive, parentID)];
+            else return DB.active[DB.FindJobIndex(DB.active, parentID)];
+        }
+        public void Restart(bool archive, bool requeue)
         {
             //Resets renderTask status.
 
+            Job parentJob = Parent(archive);
             Status = 0;
             adjustedFirstFrame = FirstFrame;
             FinishReported = false;
@@ -49,23 +55,21 @@ namespace FlagShip_Manager.Objects
             progress = 0;
             FinishedFrameNumbers.Clear();
 
-            float ProgressPerTask = 100 / ParentJob.renderTasks.Count();
-            if (progress > 0 && Status != 2) ParentJob.Progress -= (ProgressPerTask / 100) * progress;
-            else if (Status == 2) ParentJob.Progress -= (float)Math.Round(ProgressPerTask);
-            ParentJob.finished = false;
+            float ProgressPerTask = 100 / parentJob.renderTasks.Count();
+            if (progress > 0 && Status != 2) parentJob.Progress -= (ProgressPerTask / 100) * progress;
+            else if (Status == 2) parentJob.Progress -= (float)Math.Round(ProgressPerTask);
+            parentJob.finished = false;
             Status = 0;
-            if (ParentJob.Archive)
+            if (archive && requeue)
             {
-                DB.AddToActive(ParentJob);
+                DB.AddToActive(parentJob, true);
             }
-
 
         }
         public int Attempt(bool Index = true)
         {
             //Returns how many time renderTaks has been attempted. Can be reset using reset().
 
-            int CurrentAttempt = taskLogs.Attempt(Index);
             return taskLogs.Attempt(Index);
         }
         public Worker? Worker()
@@ -192,7 +196,8 @@ namespace FlagShip_Manager.Objects
         internal void taskFail(string ErrorLog, bool cancel = false, bool IgnoreAttempts = false) 
         {
             //Attempts to report reason for fail. Marks task as failed or moves to next attempt index.
-
+            
+            Job ParentJob = Parent(false);
             try
             {
                 Worker w;
@@ -230,7 +235,7 @@ namespace FlagShip_Manager.Objects
                 else
                 {
                     //Report reason for fail. 
-
+                    
                     ParentJob.ShotAlert = true;
                     if (OutofVRAM.IsMatch(taskLogs.WorkerLog.Last()))
                     {
@@ -336,13 +341,12 @@ namespace FlagShip_Manager.Objects
                 if (FrameRate.IsMatch(s))
                 {
                     fps = float.Parse(FindNum.Match(s).Value);
-                    ParentJob.frameRate = fps;
+                    Parent(false).frameRate = fps;
                     break;
                 }
             }
             
         }
-
         internal int ConvertFromTimeCode(string _TC, float _fps)
         {
             //Converts from timecode to frame number.

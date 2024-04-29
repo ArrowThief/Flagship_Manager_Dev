@@ -158,12 +158,12 @@ namespace FlagShip_Manager.Management_Server
                     j.CompletedFrames = j.TotalFramesToRender;
                 }
                 else if (j.Status == 1) j.Status = 0;
-                active.Add(j);
+                AddToActive(j);
             }
-            
-            if (_DB.ActiveJobs != null) active = _DB.ActiveJobs.ToList();
-            if (_DB.ArchiveJobs != null) active = _DB.ArchiveJobs.ToList();
-
+            foreach(Job j in _DB.ArchiveJobs)
+            {
+                AddToArchive(j,false);
+            }
 
         }
         public static byte[] ObjectToByteArray(Object obj)
@@ -232,38 +232,40 @@ namespace FlagShip_Manager.Management_Server
             //Gives Job new active list ID and adds to active list. 
             //If fromArchive is true, job is found in archive and removed before being added to active. 
             
-            addJob.ID = NextActive();
             if (fromArchive)
             {
                 int index = FindJobIndex(archive, addJob.ID);
                 archive.RemoveAt(index);
                 addJob.ArchiveDate = DateTime.MaxValue;
                 addJob.Archive = false; 
-
                 removeArchive.Add(addJob.ID);
             }
+            addJob.AssignNewID(NextActive());
             active.Add(addJob);
             
         }
-        public static void AddToArchive(Job addJob)
+        public static void AddToArchive(Job addJob, bool fromActive)
         {
             //Removes job from active list, assigns a new archive ID and archive Date,then adds to archive list. 
 
-            if (addJob.Status == 0 || addJob.Status == 1 || addJob.Status == 3) addJob.Cancel();
-
-            addJob.ID = NextArchive();
-            addJob.ArchiveDate = DateTime.Now;
-            addJob.Archive = true;
-
-            int index = FindJobIndex(active, addJob.ID);
-            active.RemoveAt(index);
-
-            removeActive.Add(addJob.ID);
+            
+            if(fromActive)
+            {
+                if (addJob.Status == 0 || addJob.Status == 1 || addJob.Status == 3) addJob.Cancel();
+                addJob.ArchiveDate = DateTime.Now;
+                addJob.Archive = true;
+                int index = FindJobIndex(active, addJob.ID);
+                active.RemoveAt(index);
+                removeActive.Add(addJob.ID);
+            }
+            addJob.AssignNewID(NextArchive());
             archive.Add(addJob);
 
         }
         public static void RemoveJob(Job remove)
         {
+            //Removes Job from Database. 
+
             int index = FindJobIndex(archive, remove.ID);
             archive.RemoveAt(index);
             try
@@ -276,38 +278,28 @@ namespace FlagShip_Manager.Management_Server
                 Console.WriteLine("Unable to remove project file. \n"+ex.ToString());
             }
         }
-        internal static Job? FindJob(List<Job> searchList, int target)
-        {
-            //Binary search for Job in List.
-
-            int mid = searchList.Count() / 2;
-            if (searchList[mid].ID == target) return searchList[mid];
-            else if (searchList[mid].ID > target)
-            {
-                return FindJob(searchList.GetRange(0, mid-1), target);
-            }
-            else if (searchList[mid].ID < target)
-            {
-                return FindJob(searchList.GetRange(mid+1, searchList.Count()-mid-1), target);
-            }
-            return null;
-        }
-        internal static int FindJobIndex(List<Job> searchList, int target, int index = 0)
+        internal static int FindJobIndex(List<Job> searchList, int target)
         {
             //Binary search for Job in List, returns index of job.
 
-            int mid = searchList.Count() / 2;
-            if (searchList[mid].ID == target) return index;
-            else if (searchList[mid].ID > target)
+            int min = 0;
+            int max = searchList.Count()-1;
+            int mid = (min+max) / 2;
+            while (min <= max)
             {
-                return FindJobIndex(searchList.GetRange(0, mid - 1), target, mid-1);
-            }
-            else if (searchList[mid].ID < target)
-            {
-                return FindJobIndex(searchList.GetRange(mid + 1, searchList.Count() - mid - 1), target, mid+1);
+                if(target == searchList[mid].ID) return mid;
+                else if(target < searchList[mid].ID)
+                {
+                    max = mid - 1;
+                }
+                else
+                {
+                    min = mid + 1;
+                }
+                mid = (min + max) / 2;
             }
             return -1;
-        }
+            }
         internal static Worker? FindWorker(List<Worker> searchList, int target)
         {
             //Binary search through Archive Job list.

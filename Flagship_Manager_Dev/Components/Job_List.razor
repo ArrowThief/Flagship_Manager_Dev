@@ -175,14 +175,18 @@
 @inject IJSRuntime JSRuntime
 <!--Begin job header bar@ShowArchiveBatch;-->
 @{
-    UpdateLists();
+    
     var ID = "jl2";
-    if (!Archive) ID = "jl3";
+    var JobList = UpdateLists();
+    if (!Archive){
+        ID = "jl3";
+    }
 }
 <div id="@ID">
-    @foreach(Job J in JobList)
+    
+    @try
     {
-        try
+        @foreach (Job J in JobList)
         {
             <div >
                 @{
@@ -271,10 +275,10 @@
                         <div style="display:inline-flex;">
 
                             <div>
-                                <Job_TaskList UpdateJob="UpdateList" LogViewCall="OpenLogView" RenderTasks="@J.renderTasks.ToArray()" CreationTime="@J.CreationTime"></Job_TaskList>
+                                <Job_TaskList archive="Archive" UpdateJob="UpdateList" LogViewCall="OpenLogView" RenderTasks="@J.renderTasks.ToArray()" CreationTime="@J.CreationTime"></Job_TaskList>
                             </div>
                             <div>
-                                <Job_BlackList UpdateJob="UpdateList" Status="@J.Status" GPUrequired="@J.GPU" JID="@J.ID" renderApp="@J.RenderApp" idBlackList="@J.WorkerBlackList" ShowButton="@J.finished"></Job_BlackList>
+                                <Job_BlackList UpdateJob="UpdateList" activeJob="@J" renderApp="@J.RenderApp" ></Job_BlackList>
                             </div>
                             <div>
                                 <Job_MetaData AverageFPS="@J.TimePerFrame" MachineHours="@J.MachineHours" JobID="@J.ID" GPU="@J.GPU" Overwrite="@J.Overwrite" OutputPath="@J.outputPath" Preset="@J.RenderPreset" ProjectPath="@J.WorkingProject" TempProjectPath="@J.Project"></Job_MetaData>
@@ -298,10 +302,11 @@
                     
             
             </div>
-        }catch{
-            Console.WriteLine("Failed to draw job.");
         }
+    }catch{
+        Console.WriteLine("Failed to draw job.");
     }
+    
 
 </div>
 
@@ -319,8 +324,6 @@
 @code {
     [Parameter]
     public bool Archive { get; set; } = false;
-    [Parameter]
-    public List<int> JobIDList { get; set; } = new List<int>();
     [Parameter]
     public EventCallback FullUpdate { get; set; }
     [Parameter]
@@ -355,9 +358,6 @@
 
     private IJSObjectReference JS;
 
-    private List<int> CheckedIDs = new List<int>();
-    private static List<Job> JobList = new List<Job>();
-
     private bool ShowActiveBatch = false;
     private bool ShowArchiveBatch = false;
     public bool hidden = false;
@@ -370,50 +370,20 @@
     private Timer? time2;
     public renderTask? LogTask = null;
 
-    internal void UpdateLists()
+    internal Job[] UpdateLists()
     {
         //Updates the UI Job List with any changes from the DB Job List. 
         //Runs everytime the UI is renndered.
 
-        List<Job> temp;
-        List<int> remove;
-
-        if (Archive){
-
-            //Assigns temp variables to Archives
-
-            temp = DB.archive;
-            remove = DB.removeArchive;
-        }
-        else
+        if (Archive)
         {
-            //Assigns temp variables to Active
-
-            temp = DB.active;
-            remove = DB.removeActive;
+            return DB.archive.ToArray();
         }
-
-        for(int i = 0; i < remove.Count(); i++)
+        else 
         {
-            //Removes any Jobs in remove List
-
-            int Index = DB.FindJobIndex(JobList, remove[i]);
-            if (Index > -1) JobList.Remove(DB.FindJob(JobList, remove[i]));
-            else Console.WriteLine("Failed to find Job Index");
+            return DB.active.ToArray();
         }
 
-        //Clear remove list
-        remove.Clear();
-
-        if (JobList.Count() < temp.Count())
-        {
-            //Adds any new Jobs from The DB joblist to the UI Job list.
-
-            for (int i = JobList.Count(); i < temp.Count(); i++)
-            {
-                JobList.Add(temp[i]);
-            }
-        }
     }
 
     protected override void OnAfterRender(bool firstRender)
@@ -453,7 +423,7 @@
     private async Task AddorRemoveActiveChecked(Job j)
     {
         //Adds or removes Job IDs from batch selected list.
-        
+
         bool CheckValue = await JS.InvokeAsync<bool>("GetCheckboxValue", $"{j.ID}");
         await CheckID.InvokeAsync(new Tuple<Job, bool>(j,CheckValue));
     }
@@ -563,7 +533,7 @@
         //Moves job to Archive List
 
         if (!j.finished) WebButtons.CancelJob(j);
-        DB.AddToArchive(j);
+        DB.AddToArchive(j, true);
 
         try
         {
@@ -606,7 +576,7 @@
     {
         //Adjusts renderTask List height.
         //If 7 tasks or greater are in list then list will grow. Else this cannot be called. 
-    
+
         if (Archive) await JS.InvokeVoidAsync("maximizeTaskList", _ID, "2");
         else await JS.InvokeVoidAsync("maximizeTaskList", _ID, "3");
     }
@@ -617,4 +587,5 @@
 
         _J.Priority = await JS.InvokeAsync<int>("CheckValue",_J.ID, _J.Priority);
     }
+
 }

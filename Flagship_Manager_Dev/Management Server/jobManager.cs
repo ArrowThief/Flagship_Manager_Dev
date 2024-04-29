@@ -243,7 +243,7 @@ namespace FlagShip_Manager
                                     Job newJ = j.JsonToJob();
                                     if (newJ.renderTasks.Length > 0)
                                     {
-                                        DB.AddToActive(newJ);
+                                        DB.active.Add(newJ);
                                     }
                                     else
                                     {

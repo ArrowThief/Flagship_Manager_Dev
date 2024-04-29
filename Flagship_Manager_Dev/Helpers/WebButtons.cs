@@ -51,7 +51,7 @@ namespace FlagShip_Manager.Helpers
             //Restarts a single renderTask, removes progress from Job.
             //If Job is in archive queue, it is returned to active queue.
 
-            j.renderTasks[_rI].Restart();
+            j.renderTasks[_rI].Restart(j.Archive, true);
         }
         public static void RemoveJob(Job j)
         {
@@ -67,7 +67,7 @@ namespace FlagShip_Manager.Helpers
             //Moves job from Active Queue to Archive. 
             //If any renderTasks are active, cancel requests are sent to workers.
            
-            DB.AddToArchive(j); 
+            DB.AddToArchive(j, true); 
         }
         
        

@@ -76,7 +76,7 @@
 <!--Task List-->
 
 @{
-    var TLID = RenderTasks[0].ParentJob.ID + "TL";
+    var TLID = RenderTasks[0].parentID + "TL";
 }
 
 <div id="@TLID" class="TaskList">
@@ -98,7 +98,7 @@
                     
                 <div class="taskCell" style="width: 100px;">
                     <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() => OpenLogView(t)"><img style="width:18px" src="/Images/Icons/log icon inverted.png" /></button>
-                    <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() =>{ t.Restart(); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
+                    <button class="taskButtons" disabled style="position:relative; top:2.5px; opacity:50%;" @onclick="() =>{ t.Restart(archive, true); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
                 </div>
             }
             else//Task has at least one attempt.
@@ -124,7 +124,7 @@
 
                 <div class="taskCell" style="width: 100px;">
                     <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() => OpenLogView(t)"><img style="width:18px" src="/Images/Icons/log icon inverted.png" /></button>
-                    <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() =>{ t.Restart(); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
+                    <button class="taskButtons hoverGlow" style="position:relative; top:2.5px;" @onclick="() =>{ t.Restart(archive, true); UpdateJob.InvokeAsync();}"><img style="width:18px" src="/Images/Icons/reset inverted.png" /></button>
                 </div>
             }
         </div>
@@ -137,7 +137,7 @@
 
 @code {
     [Parameter]
-    public int Count { get; set; } = 1;
+    public bool archive { get; set; } 
     [Parameter]
     public renderTask[] RenderTasks { get; set; } = new renderTask[0];
     [Parameter]
@@ -146,6 +146,8 @@
     public EventCallback<renderTask> LogViewCall { get; set; }
     [Parameter]
     public EventCallback UpdateJob { get; set; }
+
+    int Count = 1;
 
     Dictionary<int, string> statusMessage = new Dictionary<int, string>()
     {
