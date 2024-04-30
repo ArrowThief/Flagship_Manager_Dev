@@ -178,13 +178,11 @@ namespace FlagShip_Manager
                 {
                     if (DB.archive[index].ArchiveDate < DateTime.Now.AddDays(-7))
                     {
-                        DB.removeArchive.Add(DB.archive[index].ID);
                         RemoveList.Add(index);
                     }
                 }
                 else
                 {
-                    DB.removeArchive.Add(DB.archive[index].ID);
                     RemoveList.Add(index);
                 }   
             }

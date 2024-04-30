@@ -7,8 +7,7 @@ namespace FlagShip_Manager.Management_Server
 {
     public class DBObject
     {
-        //Custom Database object. 
-        //TODO: Repalce with MongoDB or other. 
+        //Database Objects or DBO is used for saving and loading the database on reboot. 
 
         public Worker[]? WorkerList { get; set; }
         public Job[]? ArchiveJobs { get; set; }
@@ -27,22 +26,21 @@ namespace FlagShip_Manager.Management_Server
     public class DB
     {
         //Database class is used for storing and loading DBObjects for long term storge. 
+        //On server reboot all IDs will be reset to 100 in an effort to never run out of ID numbers.
+        //Worker will count up to the ID of how many workers are in the Database while preserving the existing worker IDs. 
 
         public static bool Startup = true;
         public static bool UpdateDBFile = false;
         private static readonly string DataBaseFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_DATABASE.txt";
         
         public static List<Job> active = new List<Job>();
-        public static List<int> removeActive = new List<int>();
-        private static int activeID = 0;
+        private static int activeID = 100;
 
         public static List<Job> archive = new List<Job>();
-        public static List<int> removeArchive = new List<int>();
-        private static int archiveID = 0;
+        private static int archiveID = 100;
 
         public static List<Worker> workers = new List<Worker>();
-        public static List<int> removeWorker = new List<int>();
-        private static int workerID = 0;
+        private static int workerID = 100;
 
         public static void DataBaseManager()
         {
@@ -96,10 +94,11 @@ namespace FlagShip_Manager.Management_Server
                 if (newDB != null)
                 {
                     CheckDatabase(newDB);
-                    foreach (var worker in workers)
+                    foreach (var worker in newDB.WorkerList)
                     {
                         worker.Status = 7;
                         workers.Add(worker);
+                        workerID++;
                     }
                 }
             }
@@ -234,11 +233,10 @@ namespace FlagShip_Manager.Management_Server
             
             if (fromArchive)
             {
-                int index = FindJobIndex(archive, addJob.ID);
+                int index = FindJob(archive, addJob.ID);
                 archive.RemoveAt(index);
                 addJob.ArchiveDate = DateTime.MaxValue;
                 addJob.Archive = false; 
-                removeArchive.Add(addJob.ID);
             }
             addJob.AssignNewID(NextActive());
             active.Add(addJob);
@@ -254,9 +252,8 @@ namespace FlagShip_Manager.Management_Server
                 if (addJob.Status == 0 || addJob.Status == 1 || addJob.Status == 3) addJob.Cancel();
                 addJob.ArchiveDate = DateTime.Now;
                 addJob.Archive = true;
-                int index = FindJobIndex(active, addJob.ID);
+                int index = FindJob(active, addJob.ID);
                 active.RemoveAt(index);
-                removeActive.Add(addJob.ID);
             }
             addJob.AssignNewID(NextArchive());
             archive.Add(addJob);
@@ -266,7 +263,7 @@ namespace FlagShip_Manager.Management_Server
         {
             //Removes Job from Database. 
 
-            int index = FindJobIndex(archive, remove.ID);
+            int index = FindJob(archive, remove.ID);
             archive.RemoveAt(index);
             try
             {
@@ -278,7 +275,7 @@ namespace FlagShip_Manager.Management_Server
                 Console.WriteLine("Unable to remove project file. \n"+ex.ToString());
             }
         }
-        internal static int FindJobIndex(List<Job> searchList, int target)
+        internal static int FindJob(List<Job> searchList, int target)
         {
             //Binary search for Job in List, returns index of job.
 
@@ -300,23 +297,28 @@ namespace FlagShip_Manager.Management_Server
             }
             return -1;
             }
-        internal static Worker? FindWorker(List<Worker> searchList, int target)
+        
+        internal static Worker? FindWorker(int target)
         {
             //Binary search through Archive Job list.
 
-            int mid = searchList.Count() / 2;
-            if (searchList[mid].ID == target) return searchList[mid];
-            else if (searchList[mid].ID > target)
+            int min = 0;
+            int max = workers.Count() - 1;
+            int mid = (min + max) / 2;
+            while (min <= max)
             {
-                return FindWorker(searchList.GetRange(0, mid - 1), target);
-            }
-            else if (searchList[mid].ID < target)
-            {
-                return FindWorker(searchList.GetRange(mid + 1, searchList.Count() - mid - 1), target);
+                if (target == workers[mid].ID) return workers[mid];
+                else if (target < workers[mid].ID)
+                {
+                    max = mid - 1;
+                }
+                else
+                {
+                    min = mid + 1;
+                }
+                mid = (min + max) / 2;
             }
             return null;
         }
-
     }
-
 }

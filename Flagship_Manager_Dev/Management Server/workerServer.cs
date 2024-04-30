@@ -158,11 +158,5 @@ namespace FlagShip_Manager
             Thread.Sleep(500);
         }
 
-        internal static Worker Find(int v)
-        {
-            //Binary search though worker list.
-
-            throw new NotImplementedException();
-        }
     }
 }

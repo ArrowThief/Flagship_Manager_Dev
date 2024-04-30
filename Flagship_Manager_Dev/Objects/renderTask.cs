@@ -36,8 +36,8 @@ namespace FlagShip_Manager.Objects
 
         public Job Parent(bool archive)
         {
-            if(archive) return DB.archive[DB.FindJobIndex(DB.archive, parentID)];
-            else return DB.active[DB.FindJobIndex(DB.active, parentID)];
+            if(archive) return DB.archive[DB.FindJob(DB.archive, parentID)];
+            else return DB.active[DB.FindJob(DB.active, parentID)];
         }
         public void Restart(bool archive, bool requeue)
         {
@@ -77,7 +77,7 @@ namespace FlagShip_Manager.Objects
             //Returns worker object
             //TODO: Switch to Binary search to find workers.
 
-            Worker? w = DB.FindWorker(DB.workers, taskLogs.WorkerIDs.Last());
+            Worker? w = DB.FindWorker(taskLogs.WorkerIDs.Last());
             return w;
         }
         public void Finish()
@@ -401,7 +401,7 @@ namespace FlagShip_Manager.Objects
 
             if (taskLogs.SubmitTime.Last().AddSeconds(30) < DateTime.Now)
             {
-                Worker w = WorkerServer.Find(taskLogs.WorkerIDs.Last());
+                Worker w = DB.FindWorker(taskLogs.WorkerIDs.Last());
                 if (w != null && w.Status == 1)
                 {
                     return false;

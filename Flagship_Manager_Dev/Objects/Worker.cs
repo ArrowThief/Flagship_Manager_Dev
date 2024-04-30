@@ -409,7 +409,7 @@ namespace FlagShip_Manager.Objects
             //TODO: Rewrite ID creation to be a simpler itteration. 
 
             tcpPacket returnPacket = new tcpPacket();
-            var search = DB.FindWorker(DB.workers, receivedPacket.senderID);
+            var search = DB.FindWorker(receivedPacket.senderID);
             
             if (search != null)
             {

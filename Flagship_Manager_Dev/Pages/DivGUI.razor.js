@@ -6,7 +6,7 @@
     var eleP = document.getElementById(_ID + "p");
     var height = JL.clientHeight;
     var Time = height * .0005;
-    if (Time == 0) Time = .2;
+    if (Time < .1) Time = .1;
     else if (Time > 1.5) Time = 1.5
     var AdjustedTime = Math.round(Time * 1000);
     
@@ -24,7 +24,9 @@
         eleP2.style.transitionTimingFunction = "linear";
     }
     if (eleH.style.height == "0px") 
-    {//Opening
+    {
+        //Opening
+
         eleP.style.bottom = height + 36 + "px";
         eleP.style.transitionDuration = Time + "s";
 
@@ -35,14 +37,21 @@
         return "true," + AdjustedTime; 
     }
     else
-    {//Closing
+    {
+        //Closing
+
         eleP.style.transitionDuration = Time + "s";
         eleH.style.height = 0 + "px";
         eleP.style.bottom = height + 36 + "px";
-        setTimeout(function () {
-            CloseAllJobs(_ID, _CloseList, true)
-            eleP.style.bottom = JL.clientHeight + "px"
-        }, AdjustedTime); 
+        
+        if (_ID != 1) {
+            //console.log("Closing all jobs in " + _ID + "h")
+            setTimeout(function () {
+                CloseAllJobs(_ID, _CloseList, true)
+                eleP.style.bottom = JL.clientHeight + "px"
+            }, AdjustedTime); 
+        }
+
         return "false," + AdjustedTime; 
     }
 }
@@ -299,46 +308,39 @@ export function maximizeTaskList(_ID, _ListID) {
 export function CloseAllJobs(_ListID, _List, _ignoreList) {
     if (_ListID == "1") return;
     //console.log("Closing All");
-    try {
-        for (var i = 0; i < _List.length; i++) {
-            //console.log("Checking: " + _List[i])
-            var HDiv = document.getElementById(_List[i] + "H");
-            if (HDiv.style.height != "0px") {
-                expandTaskList(_List[i], _ListID, _ignoreList);
-            }
+    
+    for (var i = 0; i < _List.length; i++) {
+        console.log("Checking: " + _List[i]+"H")
+        var HDiv = document.getElementById(_List[i] + "H");
+        if (HDiv.style.height != "0px") {
+            expandTaskList(_List[i], _ListID, _ignoreList);
         }
-    } catch
-    {
-        console.log("Failed to close all jobs.")
     }
+    
 }
-export function UpdateWorkerList() {
-    //Get Divs
-    var DivToAdjust = document.getElementById("1h");
-    var DivToGetHeight = document.getElementById("jl1");
-    //Get height
-    var NewHeight = DivToGetHeight.clientHeight;
-    console.log("new Height: " + NewHeight);
-    //Apply height with 36px Headder
-    DivToAdjust.style.height = NewHeight + 36 + "px";
-}
+
 export function UpdateListHeights() {
     //Get list
 
     console.log("Running UpdateList Heights");
+    var Wo = document.getElementById("1h");
+    var Wojl = document.getElementById("jl1");
     var Ar = document.getElementById("2h");
     var Arjl = document.getElementById("jl2");
     var Ac = document.getElementById("3h");
     var Acjl = document.getElementById("jl3");
     setTimeout(function () {
         //console.log("Done waiting: " + Time)
-        var ArHeight = Ar.clientHeight;
+        //var WoHeight = Wo.clientHeight;
+        var WojlHeight = Wojl.clientHeight;
+        //var ArHeight = Ar.clientHeight;
         var ArjlHeight = Arjl.clientHeight;
-        var AcHeight = Ac.clientHeight;
+        //var AcHeight = Ac.clientHeight;
         var AcjlHeight = Acjl.clientHeight;
-        console.log("Ar Div height: " + ArHeight + "\nAr Job List height: " + ArjlHeight + "\nAc Div height: " + AcHeight + "\nAc Job List height: " + AcjlHeight);
+        //console.log("Ar Div height: " + ArHeight + "\nAr Job List height: " + ArjlHeight + "\nAc Div height: " + AcHeight + "\nAc Job List height: " + AcjlHeight);
         if (Ar.offsetHeight > 0) Ar.style.height = ArjlHeight + 36 + "px";
         if (Ac.offsetHeight > 0) Ac.style.height = AcjlHeight + 36 + "px";
+        if (Wo.offsetHeight > 0) Wo.style.height = WojlHeight + 36 + "px";
     }, 100);  
 }
 export function getInfo() {
@@ -357,24 +359,33 @@ export function getInfo() {
     //calculate adjustment
     console.log("Ar Div height: " + ArHeight + "\nAr Job List height: " + ArjlHeight + "\nAc Div height: " + AcHeight + "\nAc Job List height: " + AcjlHeight);
 }
-export function CheckHeight(arOpen, acOpen) {
+export function CheckHeight(wOpen, arOpen, acOpen) {
 
+    if (wOpen) {
+        var w = document.getElementById("1h");
+        var wjl = document.getElementById("jl1");
+        //console.log((w.clientHeight -32) + " vs " + wjl.clientHeight);
+        if ((w.clientHeight) < wjl.clientHeight) {
+            //console.log("Updating Archive List Height")
+            UpdateListHeights()
+        }
+    }
     if (arOpen)
     {
         var Ar = document.getElementById("2h");
         var Arjl = document.getElementById("jl2");
-        console.log((Ar.clientHeight - 32) + " vs " + Arjl.clientHeight);
+        //console.log((Ar.clientHeight - 32) + " vs " + Arjl.clientHeight);
         if ((Ar.clientHeight - 32) < Arjl.clientHeight) {
-            console.log("Updating Archive List Height")
+            //console.log("Updating Archive List Height")
             UpdateListHeights()
         }
     }
     if (acOpen) {
         var Ac = document.getElementById("3h");
         var Acjl = document.getElementById("jl3");
-        console.log((Ac.clientHeight) + " vs " + Acjl.clientHeight);
+        //console.log((Ac.clientHeight) + " vs " + Acjl.clientHeight);
         if ((Ac.clientHeight - 32) < Acjl.clientHeight) {
-            console.log("Updating Active List Height")
+            //console.log("Updating Active List Height")
             UpdateListHeights()
         }
     }

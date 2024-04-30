@@ -374,7 +374,7 @@
         if (firstRender)
         {
             await BuildJS();
-            time.Interval = 50;
+            time.Interval = 1000;
             time.Elapsed += OnTimeInterval;
             time.AutoReset = true;
             // Start the timer.
@@ -385,11 +385,8 @@
     {
         try
         {
-            if (wOpen)
-            {
-                JS.InvokeVoidAsync("UpdateWorkerList");
-            }
-            JS.InvokeVoidAsync("CheckHeight", arOpen, acOpen);
+            //JS.InvokeVoidAsync("UpdateWorkerList", wOpen);
+            JS.InvokeVoidAsync("CheckHeight", wOpen, arOpen, acOpen);
 
         }
         catch
@@ -646,19 +643,26 @@
         {
             if (_ListID == "1")
             {
-                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, DB.workers.ToArray());
+
+                int[] IDArray = new int[DB.workers.Count()];
+                for (int i = 0; i < DB.workers.Count(); i++) IDArray[i] = DB.workers[i].ID;
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, IDArray);
                 At = temp.Split(",");
                 wOpen = bool.Parse(At[0]);
             }
             else if (_ListID == "2")
             {
-                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, DB.archive.ToArray());
+                int[] IDArray = new int[DB.archive.Count()];
+                for (int i = 0; i < DB.archive.Count(); i++) IDArray[i] = DB.archive[i].ID;
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, IDArray);
                 At = temp.Split(",");
                 arOpen = bool.Parse(At[0]);
             }
             else if (_ListID == "3")
             {
-                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, DB.active.ToArray());
+                int[] IDArray = new int[DB.active.Count()];
+                for (int i = 0; i < DB.active.Count(); i++) IDArray[i] = DB.active[i].ID;
+                temp = await JS.InvokeAsync<string>("OpenCloseLists", _ListID, IDArray);
                 At = temp.Split(",");
                 acOpen = bool.Parse(At[0]);
             }
