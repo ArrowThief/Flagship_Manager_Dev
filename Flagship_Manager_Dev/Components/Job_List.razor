@@ -177,7 +177,7 @@
 @{
     
     var ID = "jl2";
-    var JobList = UpdateLists();
+    UpdateLists();
     if (!Archive){
         ID = "jl3";
     }
@@ -249,11 +249,13 @@
                         <img style="opacity:.7;" src=@GetTypeIcon(J) width="20" />
                         <label style="font-size:14px; -webkit-text-fill-color: #E4E4E4;">@J.FileFormat</label>
                     </div>
-                    <Job_Buttons UpdateList="UpdateList" CheckID="RemoveActiveChecked" _Status="J.Status" activeJob="J"></Job_Buttons>
+                    <Job_Buttons UpdateList="UpdateList" CheckID="AddorRemoveActiveChecked" _Status="J.Status" activeJob="J"></Job_Buttons>
                     <div class="TableCell" style="width:50px; position:relative; top:5px;">
-                        <input id="@CBID" style="accent-color:#1E1E1E;" type="checkbox" @onchange="()=> AddorRemoveActiveChecked(J)" />
+                        <label>@J.ID.ToString().Last()</label>
+                        <button style="width:20px; height:20px; border:hidden; background-color:transparent;" @onclick="() => AddorRemoveActiveChecked(J)" >
+                            <img id="@CBID" src="Images/plus.png" style="width:24px; clip-path: inset(0px,0px,0px,0px); position:relative; bottom: 4px; right:10px; transition:all; transition-duration:.2s;" />
+                        </button>
                     </div>
-
                 </div>
 
                     
@@ -315,7 +317,7 @@
         DoubleLog = false;
         }
         else if (LogTask != null) {
-                <LogView _TaskLogs="@LogTask.taskLogs" CloseWindow="CloseLogView"></LogView>
+            <LogView _TaskLogs="@LogTask.taskLogs" CloseWindow="CloseLogView"></LogView>
         }
 
     </div>
@@ -355,6 +357,7 @@
         {5,"#595959"}
 
     };
+    HashSet<int> SelectedJobs = new HashSet<int>();
 
     private IJSObjectReference JS;
 
@@ -363,6 +366,8 @@
     public bool hidden = false;
     private bool DoubleLog = false;
 
+    private Job[] JobList = new Job[0];
+
     public string backgroundStyle = "Background";
     private string BlackListActive = "none";
     public string OpenClosed = "hidden";
@@ -370,22 +375,31 @@
     private Timer? time2;
     public renderTask? LogTask = null;
 
-    internal Job[] UpdateLists()
+    private int CurrentSort = -1; //Default sort is by submit or archive time. 
+
+    internal void UpdateLists()
     {
         //Updates the UI Job List with any changes from the DB Job List. 
         //Runs everytime the UI is renndered.
 
         if (Archive)
         {
-            return DB.archive.ToArray();
+            if (DB.archive.Count() != JobList.Count())
+            {
+                JobList = DB.archive.ToArray();
+                Sort(CurrentSort, true);
+            }
         }
         else 
         {
-            return DB.active.ToArray();
+            if (DB.active.Count() != JobList.Count())
+            {
+                JobList = DB.active.ToArray();
+                Sort(CurrentSort, false);
+            }
         }
-
+        if (CurrentSort == 3) Sort(3, Archive, true);
     }
-
     protected override void OnAfterRender(bool firstRender)
     {
         //Protected method for first render. 
@@ -396,7 +410,7 @@
             BuildJS();
             time2 = new Timer();
             //Set the time interval.
-            time2.Interval = 1000;
+            time2.Interval = 200;
             time2.Elapsed += OnTimeInterval;
             time2.AutoReset = true;
             // Start the timer.
@@ -424,15 +438,49 @@
     {
         //Adds or removes Job IDs from batch selected list.
 
-        bool CheckValue = await JS.InvokeAsync<bool>("GetCheckboxValue", $"{j.ID}");
-        await CheckID.InvokeAsync(new Tuple<Job, bool>(j,CheckValue));
-    }
-    private async Task RemoveActiveChecked(Job j)
-    {
-        //Removes Job IDs from batch selected list.
+        //Sets bachButtonID depending on if this is the Archive queue or not.
+        string BatchButtonsID = "31";
+        if (Archive)BatchButtonsID = "21";
 
-        await CheckID.InvokeAsync(new Tuple<Job, bool>(j, false));
+        if (SelectedJobs.Contains(j.ID))
+        {
+            //Remove selected.
+            SelectedJobs.Remove(j.ID);
+            await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
+            await JSFunctiion("SetHeight", j.ID + "CB", "inset(0px 0px 0px 0px)");
+            //set minus to plus
+        }
+        else
+        {
+            //Add selected.
+            SelectedJobs.Add(j.ID);
+            await JSFunctiion("ChangeBarColor", j.ID + "bar", "true");
+            await JSFunctiion("SetHeight", j.ID + "CB", "inset(45.5% 0% 45.5% 0%)");
+            //Set minus to plus;
+        }
+
+
+        if (SelectedJobs.Count() > 0)
+        {
+            //Displays batch buttons if a job is selected.
+
+            await JSFunctiion("SetElementOpacity", BatchButtonsID, "100");
+            await JSFunctiion("EnableDisableElement", BatchButtonsID, "false");
+        }
+        else if (SelectedJobs.Count() == JobList.Count())
+        {
+            //select all is selected. 
+
+        }
+        else
+        {
+            //Hides batch buttons if no jobs are selected.
+
+            await JSFunctiion("SetElementOpacity", BatchButtonsID, "0");
+            await JSFunctiion("EnableDisableElement", BatchButtonsID, "true");
+        }
     }
+
     protected void OpenLogView(renderTask _rT){
 
         //Displays log window with data from a renderTask.
@@ -476,12 +524,7 @@
             await JS.InvokeVoidAsync(_function);
         }
     }
-    public string GetAppIcon(string _appType)
-    {
-        //Returns the path to the correct App icon.
 
-        return apps[_appType.ToLower()];
-    }
     public string SimplifyTime(TimeSpan _time)
     {
         //Simplifes timespan to readable format.
@@ -514,19 +557,6 @@
             return "Images/Image Sequence White.png";
         }
 
-    }
-    private void OpenCloseBlacklist()
-    {
-        //Toggles blackList
-
-        if (BlackListActive == "none")
-        {
-            BlackListActive = "block";
-        }
-        else
-        {
-            BlackListActive = "none";
-        }
     }
     public void ArchiveJob(Job j)
     {
@@ -586,6 +616,88 @@
         //Returns cheeky message in JS console if silly numbers are called. 
 
         _J.Priority = await JS.InvokeAsync<int>("CheckValue",_J.ID, _J.Priority);
+    }
+    public void Sort(int sortType, bool archive, bool ignoreReverse = false)
+    {
+        //Sorts list by type.
+        //Sort function is passed with the int sortType.
+        if(sortType == CurrentSort && !ignoreReverse)
+        {
+            Array.Reverse(JobList);
+            return;
+        }
+
+        switch (sortType)
+        {
+            case 0:
+                //Sort by Status 
+
+                Array.Sort(JobList, (a, b) => a.Status.CompareTo(b.Status));
+                CurrentSort = 0;
+                break;
+            case 1:
+                //Sort by Render application
+
+                Array.Sort(JobList, (a, b) => a.RenderApp.CompareTo(b.RenderApp));
+                CurrentSort = 1;
+                break;
+            case 2:
+                //Sort by Shot name
+                    
+                Array.Sort(JobList, (a, b) => a.Name.CompareTo(b.Name));
+                CurrentSort = 2;
+                break;
+            case 3:
+                //Sort by priority.
+                
+                Array.Sort(JobList, (a, b) => a.Priority.CompareTo(b.Priority));
+                CurrentSort = 3;
+                break;
+            case 4:
+                //Sort by Progress
+                //TODO: Auto sort on progress changes.
+
+                Array.Sort(JobList, (a, b) => a.Progress.CompareTo(b.Progress));
+                CurrentSort = 4;
+                break;
+            case 5:
+                //Sort by Job length
+
+                Array.Sort(JobList, (a, b) => a.TotalFramesToRender.CompareTo(b.TotalFramesToRender));
+                CurrentSort = 5;
+                break;
+            case 6:
+                //Sort by Active time
+
+                Array.Sort(JobList, (a, b) => a.totalActiveTime.CompareTo(b.totalActiveTime));
+                CurrentSort = 6;
+                break;
+            case 7:
+                //Sort by Remainingn time
+
+                Array.Sort(JobList, (a, b) => a.RemainingTime.CompareTo(b.RemainingTime));
+                CurrentSort = 7;
+                break;
+            case 8:
+                //Sort by output file format
+
+                Array.Sort(JobList, (a, b) => a.FileFormat.CompareTo(b.FileFormat));
+                CurrentSort = 8;
+                break;
+            default:
+                if (archive)
+                {
+                    //Sort by Archive time
+                    Array.Sort(JobList, (a, b) => a.ArchiveDate.CompareTo(b.ArchiveDate));
+                }
+                else
+                {
+                    //Sort by submit time
+                    Array.Sort(JobList, (a, b) => a.CreationTime.CompareTo(b.CreationTime));
+                }
+                CurrentSort = -1;
+                break;
+        }
     }
 
 }

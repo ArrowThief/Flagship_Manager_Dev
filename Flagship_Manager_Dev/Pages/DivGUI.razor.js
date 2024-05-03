@@ -390,41 +390,8 @@ export function CheckHeight(wOpen, arOpen, acOpen) {
         }
     }
 }
-export function GetCheckboxValue(_ID) {
-    var Checkbox = document.getElementById(_ID + "CB")
-    return Checkbox.checked;
+export function SetHeight(id, height) {
+    console.log(height);
+    var ele = document.getElementById(id);
+    ele.style.clipPath = height;
 }
-/* Deprecated
-export function AdjustListHeight(_ID) {
-    //Get Divs
-    var DivToAdjust = document.getElementById(_ID + "h");
-    var DivToGetHeight = document.getElementById("jl" + _ID);
-    //Get height
-    var NewHeight = DivToGetHeight.clientHeight;
-    console.log("new Height: " + NewHeight);
-    //Apply height with 36px Headder
-    DivToAdjust.style.height = NewHeight + 36 + "px";
-}
-
-export function CalculateListHeights(_ID) {
-    //Get list
-    var Ar = document.getElementById("2h");
-    var Arjl = document.getElementById("jl2");
-    var Ac = document.getElementById("3h");
-    var Acjl = document.getElementById("jl3");
-    
-    //Get list height
-    //console.log("Made it here")
-    var ArHeight = Ar.clientHeight;
-    var ArjlHeight = Arjl.clientHeight;
-    var AcHeight = Ac.clientHeight;
-    var AcjlHeight = Acjl.clientHeight;
-    //calculate adjustment
-    console.log("Archive Div: " + ArHeight + "\nAr Job List height: " + ArjlHeight + "\nAc Div height: " + AcHeight + "\nAc Job List height: " + AcjlHeight);
-    Ar.style.height = ArjlHeight + 36 + "px";
-    Ac.style.height = AcjlHeight + 36 + "px";
-    //Apply adjustment
-    //ListDiv.style.height = (CurrentHeight - Adjustment) + "px";
-}*/
-
-

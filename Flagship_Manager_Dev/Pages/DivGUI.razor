@@ -238,7 +238,7 @@
             </div>
 
             <div class="Background" style="height:auto;">
-                <!--<DivArchiveJobUI></DivArchiveJobUI>-->
+                <!--Worker List-->
                 <Worker_List></Worker_List>
             </div>
         </div>
@@ -260,8 +260,8 @@
                 <div class="headerClass sort-link" style="width:90px" @onclick="() => listSort(true,5)">Frames</div>
                 <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(true,6)">Active</div>
                 <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(true,7)">Remaining</div>
-                <div class="headerClass sort-link" style="width:120px" @onclick=" ()=> listSort(true,8)">Archive Time</div>
-                <div class="headerClass sort-link" style="width:140px" @onclick=" ()=> listSort(true,9)">Format</div>
+                <div class="headerClass sort-link" style="width:120px" @onclick=" ()=> listSort(true,-1)">Archive Time</div>
+                <div class="headerClass sort-link" style="width:140px" @onclick=" ()=> listSort(true,8)">Format</div>
                 <div class="headerClass" style="width:80px;"></div>
                 <div id="21" class="headerClass" style="opacity:0;">
                     <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(8, true)">Re-Queue</button></div>
@@ -274,9 +274,8 @@
             </div>
 
             <div class="Background" style=" display:block;">
-                <!--<DivArchiveJobUI></DivArchiveJobUI>-->
-
-                <Job_List FullUpdate="UpdateAll"CheckID="ArchiveSelectionChange" Archive="true"></Job_List>
+                <!--Archive Job list-->
+                <Job_List @ref="archive" FullUpdate="UpdateAll"CheckID="ArchiveSelectionChange" Archive="true"></Job_List>
                
             </div>
         </div>
@@ -297,8 +296,8 @@
                 <div class="headerClass sort-link" style="width:90px" @onclick="() =>listSort(false,5)">Frames</div>
                 <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(false,6)">Active</div>
                 <div class="headerClass sort-link" style="width:80px" @onclick="() => listSort(false,7)">Remaining</div>
-                <div class="headerClass sort-link" style="width:120px" @onclick=" ()=> listSort(false,8)">Submit Time</div>
-                <div class="headerClass sort-link" style="width:140px" @onclick=" ()=> listSort(false,9)">Format</div>
+                <div class="headerClass sort-link" style="width:120px" @onclick=" ()=> listSort(false,-1)">Submit Time</div>
+                <div class="headerClass sort-link" style="width:140px" @onclick=" ()=> listSort(false,8)">Format</div>
                 <div class="headerClass" style="width:10px;"></div>
                 <div id="31" class="headerClass" style="opacity:0;">
                     <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(1)">Cancel</button></div>
@@ -315,7 +314,8 @@
                 </div>
             </div>
             <div class="Background" style="display:block; height:auto;">
-                <Job_List FullUpdate="UpdateAll" CheckID="ActiveSelectionChange" Archive="false"></Job_List>
+                <!--Active Job list-->
+                <Job_List @ref="active" FullUpdate="UpdateAll" CheckID="ActiveSelectionChange" Archive="false"></Job_List>
             </div>
         </div>
     </div>
@@ -365,6 +365,10 @@
     private List<Job> ActiveSelection = new List<Job>();
     private List<Job> ArchiveSelection = new List<Job>();
 
+    private Job_List active { get; set; }
+
+    private Job_List archive { get; set; }
+
     private Timer time = new Timer();
 
     public IJSObjectReference JS;
@@ -374,7 +378,7 @@
         if (firstRender)
         {
             await BuildJS();
-            time.Interval = 1000;
+            time.Interval = 200;
             time.Elapsed += OnTimeInterval;
             time.AutoReset = true;
             // Start the timer.
@@ -498,7 +502,6 @@
         {
             await JSFunctiion("SetCheckValue", "2cb", "false");
         }
-        listSort(true);
     }
     public static int CountOnlineWorkers(){
         int Online = 0;
@@ -560,16 +563,7 @@
         if (_Archive) temp = DB.archive;
         else temp = DB.active;
         bool selected = bool.Parse(eve.Value.ToString());
-        if (selected)
-        {
-            await JSFunctiion("SetElementOpacity", UI_ID, "100");
-            await JSFunctiion("EnableDisableElement", UI_ID, "false");
-        }
-        else
-        {
-            await JSFunctiion("SetElementOpacity", UI_ID, "0");
-            await JSFunctiion("EnableDisableElement", UI_ID, "true");
-        }
+       
         if (_Archive) ArchiveSelection.Clear();
         else ActiveSelection.Clear();
 
@@ -672,47 +666,17 @@
             Console.WriteLine($"Open Close list failed. \nERROR: \n\n{Ex}");
         }
     }
-    internal void listSort(bool Archive, int Index = -1)
+    internal void listSort(bool archiveList, int Index = -1)
     {
         //Sorts lists
-        //TODO: Try rewriting this to be faster.
 
-        if (Index != -1) SortIndex = Index;
-        else Index = SortIndex;
-        switch (Index)
+        if (archiveList)
         {
-            case (0):
-                Sort.ByStatus(Archive,true);
-                break;
-            case(1):
-                Sort.ByApp(Archive, true);
-                break;
-            case (2):
-                Sort.ByName(Archive, true);
-                break;
-            case(3):
-                Sort.ByPriority(Archive, true);
-                break;
-            case(4):
-                Sort.ByProgress(Archive, true);
-                break;
-            case(5):
-                Sort.ByTotalFrames(Archive, true);
-                break;
-            case(6):
-                Sort.ByTimeActive(Archive, true);
-                break;
-            case(7):
-                Sort.ByRemaining(Archive, true);
-                break;
-            case(8):
-                Sort.ByOldest(Archive, true);
-                break;
-            case (9):
-                Sort.ByFormat(Archive, true);
-                break;
-            }
-            
-
+            archive.Sort(Index, true);
+        }
+        else
+        {
+            active.Sort(Index, false);
+        }
     }
 }

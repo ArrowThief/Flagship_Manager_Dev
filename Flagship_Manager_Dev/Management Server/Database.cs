@@ -34,13 +34,13 @@ namespace FlagShip_Manager.Management_Server
         private static readonly string DataBaseFilePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile) + "\\documents\\FlagShip_DATABASE.txt";
         
         public static List<Job> active = new List<Job>();
-        private static int activeID = 100;
+        private static int activeID = 1000000;
 
         public static List<Job> archive = new List<Job>();
-        private static int archiveID = 100;
+        private static int archiveID = 2000000;
 
         public static List<Worker> workers = new List<Worker>();
-        private static int workerID = 100;
+        private static int workerID = 3000000;
 
         public static void DataBaseManager()
         {
