@@ -91,9 +91,13 @@ export function ChangeBarColor(_ID, value) {
     console.log(_ID);
     var eleB = document.getElementById(_ID)
     if (V) {
-        eleB.style.background = "#4d4d4d"
+        eleB.classList.remove("jobBar")// = "#4d4d4d"
+        eleB.classList.add("selectedJobBar")
     } else {
-        eleB.style.background = "#424242";
+        //eleB.style.background = "#424242";
+        eleB.classList.remove("selectedJobBar")
+        eleB.classList.add("jobBar")// = "#4d4d4d"
+        
     }
 }
 export function autoAdjustHeight(_ID) {

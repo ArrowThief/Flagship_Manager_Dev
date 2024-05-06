@@ -269,13 +269,13 @@
                     <div class="BatchDivs"><button class="BatchButtons BatchButtonsColor" @onclick="() => RunBatchAction(7, true)">Delete</button></div>
                 </div>
                 <div class="headerClass">
-                    <input id="2cb" type="checkbox" style="width:52px;" @onchange='(e) => SelectAllJobs(e,"21", true)' />
+                    <input id="2cb" type="checkbox" style="width:52px;" @onchange='(e) => SelectAllJobs(e, true)' />
                 </div>
             </div>
 
             <div class="Background" style=" display:block;">
                 <!--Archive Job list-->
-                <Job_List @ref="archive" FullUpdate="UpdateAll"CheckID="ArchiveSelectionChange" Archive="true"></Job_List>
+                <Job_List @ref="archive" FullUpdate="UpdateAll" Archive="true"></Job_List>
                
             </div>
         </div>
@@ -310,12 +310,12 @@
                 </div>
                 <div class="headerClass">
                     <div style="width:52px;"></div>
-                    <input id="3cb" type="checkbox" @onchange='(e) => SelectAllJobs(e, "31")' />
+                    <input id="3cb" type="checkbox" @onchange='(e) => SelectAllJobs(e, false)' />
                 </div>
             </div>
             <div class="Background" style="display:block; height:auto;">
                 <!--Active Job list-->
-                <Job_List @ref="active" FullUpdate="UpdateAll" CheckID="ActiveSelectionChange" Archive="false"></Job_List>
+                <Job_List @ref="active" FullUpdate="UpdateAll" Archive="false"></Job_List>
             </div>
         </div>
     </div>
@@ -361,9 +361,6 @@
     private int JSFail = 0;
     private int SortIndex = 2;
     private int NotFail = 0;
-
-    private List<Job> ActiveSelection = new List<Job>();
-    private List<Job> ArchiveSelection = new List<Job>();
 
     private Job_List active { get; set; }
 
@@ -428,81 +425,6 @@
         await JSFunctiion("UpdateListHeights");
         await InvokeAsync(() => StateHasChanged());
     }
-    public async void ActiveSelectionChange(Tuple<Job, bool> _Passed)
-    {
-        //Updates list of selected Jobs within Active queue.
-        Job j = _Passed.Item1;
-        if (!_Passed.Item2)
-        {
-            await JS.InvokeVoidAsync("SetCheckValue", $"{j.ID}CB", "false");
-            await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
-            try { ActiveSelection.Remove(j); }
-            catch(Exception Ex)
-            {
-                Console.WriteLine($"Failed to remove: {j.ID}");
-            }
-            Console.WriteLine($"Removing ID: {j.ID}");
-        }
-        else
-        {
-            ActiveSelection.Add(j);
-            await JSFunctiion("ChangeBarColor", j.ID + "bar", "true");
-            Console.WriteLine($"Adding ID: {j.ID}");
-        }
-        if (ActiveSelection.Count() > 0)
-        {
-            await JSFunctiion("SetElementOpacity", "31", "100");
-            await JSFunctiion("EnableDisableElement", "31", "false");
-        }
-        else
-        {
-            await JSFunctiion("SetElementOpacity", "31", "0");
-            await JSFunctiion("EnableDisableElement", "31", "true");
-        }
-        if (DB.active.Count() > 0 && ActiveSelection.Count() == DB.active.Count())
-        {
-            await JSFunctiion("SetCheckValue", "3cb", "true");
-        }
-        else
-        {
-            await JSFunctiion("SetCheckValue", "3cb", "false");
-        }
-    }
-    public async void ArchiveSelectionChange(Tuple<Job, bool> _Passed)
-    {
-        //Updates list of selected Jobs within Archive queue.
-
-        Job j = _Passed.Item1;
-        if (!_Passed.Item2)
-        {
-            ArchiveSelection.Remove(j);
-            await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
-            await JSFunctiion("SetCheckValue", j.ID + "CB", "false");
-        }
-        else
-        {
-            ArchiveSelection.Add(j);
-            await JSFunctiion("ChangeBarColor", j.ID + "bar", "true");
-        }
-        if (ArchiveSelection.Count() > 0)
-        {
-            await JSFunctiion("SetElementOpacity", "21", "100");
-            await JSFunctiion("EnableDisableElement", "21", "false");
-        }
-        else
-        {
-            await JSFunctiion("SetElementOpacity", "21", "0");
-            await JSFunctiion("EnableDisableElement", "31", "true");
-        }
-        if (DB.archive.Count() > 0 && ArchiveSelection.Count() == DB.archive.Count())
-        {
-            await JSFunctiion("SetCheckValue", "2cb", "true");
-        }
-        else
-        {
-            await JSFunctiion("SetCheckValue", "2cb", "false");
-        }
-    }
     public static int CountOnlineWorkers(){
         int Online = 0;
         foreach(Worker W in DB.workers){
@@ -555,74 +477,35 @@
             Console.WriteLine("Failed to define JS\n" + ex);
         }
     }
-    internal async Task SelectAllJobs(ChangeEventArgs eve, string UI_ID, bool _Archive = false)
+    internal async Task SelectAllJobs(ChangeEventArgs eve, bool _archive = false)
     {
         //Selects or deslects all jobs in list.
-
-        List<Job> temp;
-        if (_Archive) temp = DB.archive;
-        else temp = DB.active;
-        bool selected = bool.Parse(eve.Value.ToString());
-       
-        if (_Archive) ArchiveSelection.Clear();
-        else ActiveSelection.Clear();
-
-        foreach(Job j in temp)
+        if (_archive)
         {
-            if (selected)
-            {
-                await JSFunctiion("ChangeBarColor", j.ID + "bar", "true");
-                await JSFunctiion("SetCheckValue", j.ID + "CB", "true");
-
-                if (_Archive)
-                {
-                    ArchiveSelection.Add(j);
-                }
-                else ActiveSelection.Add(j);
-            }
-            else
-            {
-                await JSFunctiion("SetCheckValue", j.ID + "CB", "false");
-                await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
-            }
-        }
-        InvokeAsync(() => StateHasChanged());
-    }
-    internal async Task RunBatchAction(int _Action, bool _Archive = false)
-    {
-        //Runs batch action on all select jobs
-
-        if (_Archive)
-        {
-            WebButtons.RunAction(_Action, ArchiveSelection.ToArray());
-            foreach (Job j in DB.archive)
-            {
-                await JSFunctiion("SetCheckValue", j.ID + "CB", "false");
-                await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
-            }
+            archive.SelectAll(bool.Parse(eve.Value.ToString()));
         }
         else
         {
-            WebButtons.RunAction(_Action, ActiveSelection.ToArray());
-            foreach (Job j in DB.active)
-            {
-                await JSFunctiion("SetCheckValue", j.ID + "CB", "false");
-                await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
-            }
+            active.SelectAll(bool.Parse(eve.Value.ToString()));
+        }
+        InvokeAsync(() => StateHasChanged());
+    }
+    internal async Task RunBatchAction(int _action, bool _archive = false)
+    {
+        //Runs batch action on all select jobs
+
+        if (_archive)
+        {
+            archive.BatchAction(_action);
+
+        }
+        else
+        {
+            active.BatchAction(_action);
         }
 
-        await JSFunctiion("SetElementOpacity", "21", "0");
-        await JSFunctiion("EnableDisableElement", "21", "true");
-        await JSFunctiion("SetCheckValue", "2cb", "false");
-        await JSFunctiion("SetElementOpacity", "31", "0");
-        await JSFunctiion("EnableDisableElement", "31", "true");
-        await JSFunctiion("SetCheckValue", "3cb", "false");
-
-        await JSFunctiion("UpdateListHeights");
-
         InvokeAsync(() => StateHasChanged());
-        ActiveSelection.Clear();
-        ArchiveSelection.Clear();
+
 
 
     }

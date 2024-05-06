@@ -40,34 +40,37 @@
 @if(!activeJob.Archive)
 {
     <div class="TableCell" style="width: 10px;"></div>
-    
-    <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideCancelButton(_Status)" @onclick="() => { 
+
+    <div class="TableCell">
+        <button class="JobButtons" style="visibility: @ShowHideCancelButton(activeJob.Status)" @onclick="() => {
         activeJob.Cancel();
-        CheckID.InvokeAsync(activeJob);
+
     }">Cancel</button></div>
     
-    @if (_Status == 3 || _Status == 5)
+    @if (activeJob.Status == 3 || activeJob.Status == 5)
     {
-        <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideResumeButton(_Status)" @onclick="() => {
+        <div class="TableCell">
+            <button class="JobButtons" style="visibility: @ShowHideResumeButton(activeJob.Status)" @onclick="() => {
             activeJob.PauseOrResume();
-            CheckID.InvokeAsync(activeJob);
+
         }">Resume</button></div>
     }
     else
     {
-        <div class="TableCell"><button class="JobButtons" style="visibility: @ShowHideCancelButton(_Status)" @onclick="() => {
+        <div class="TableCell">
+            <button class="JobButtons" style="visibility: @ShowHideCancelButton(activeJob.Status)" @onclick="() => {
             activeJob.PauseOrResume();
-            CheckID.InvokeAsync(activeJob);
+
         }">Pause</button></div>
     }
     <div class="TableCell"><button class="JobButtons" @onclick="() => {
         activeJob.Restart();
-        CheckID.InvokeAsync(activeJob);
+
     }">Restart</button></div>
     
     <div class="TableCell"><button class="JobButtons" @onclick="() => {
         DB.AddToArchive(activeJob, true);
-        CheckID.InvokeAsync(activeJob);
+
     }">Archive</button></div>
 }
 else
@@ -75,29 +78,26 @@ else
     <div class="TableCell" style="width: 80px;"></div>
     <div class="TableCell"><button class="JobButtons" @onclick="() => {
         ReturnJobToQueue(activeJob);
-        CheckID.InvokeAsync(activeJob);
+
         }">Re-Queue</button></div>
     
     <div class="TableCell"><button class="JobButtons" @onclick="() => {
         activeJob.Restart(); 
         DB.AddToActive(activeJob, true);
-        CheckID.InvokeAsync(activeJob);
+
     }">Restart</button></div>
     
     <div class="TableCell"><button class="JobButtons" @onclick="() => {
         DB.RemoveJob(activeJob);
-        CheckID.InvokeAsync(activeJob);
+
     }">Delete</button></div>
 }
 @code {
     [Parameter]
-    public int _Status { get; set; } = 0;
-    [Parameter]
     public Job activeJob { get; set; }
     [Parameter]
     public EventCallback UpdateList { get; set; }
-    [Parameter]
-    public EventCallback<Job> CheckID { get; set; }
+
 
     public string ShowBatch { get; set; } = "block";
 

@@ -171,6 +171,17 @@
         transition-property: all;
         transition-duration: 5s;
     }
+    .jobBar{
+        background: #424242;
+        width: 100%;
+        height: 32px;
+    }
+
+    .selectedJobBar{
+        background: #4d4d4d;
+        width: 100%;
+        height: 32px;
+    }
 </style>
 @inject IJSRuntime JSRuntime
 <!--Begin job header bar@ShowArchiveBatch;-->
@@ -188,15 +199,18 @@
     {
         @foreach (Job J in JobList)
         {
+
             <div >
                 @{
-                var CBID = J.ID + "CB";
-                var PriorityID = J.ID + "Pri";
-                var BarID = J.ID + "bar";
-                var Arrow = J.ID + "arrow";
+                    var CBID = J.ID + "CB";
+                    var PriorityID = J.ID + "Pri";
+                    var BarID = J.ID + "bar";
+                    var Arrow = J.ID + "arrow";
+                    var TaskDiv = J.ID + "H";
+                    var TD = J.ID + "P";
+                    var MaxA = J.ID + "MaxA";
                 }
-
-                <div id="@BarID" style="background: #424242; width: 100%; height:32px; clear: both;" hidden=@hidden>
+                <div id="@BarID" class="jobBar">
                     <div class="TableCell" style="margin-left:4px; width: 45px; background: @StatusColor[J.Status]; height:25px; border-radius:2px;"><img src=@StatusIcon[J.Status] style="opacity:.5; width:20px; position:relative; bottom:1px;" /> </div>
                     <div class="TableCell" style="width:50px"><button class="ExpandButton" @onclick="() => OpenPanel(J.ID)"><img style="transition:all; transition-duration:.2s" id="@Arrow" src="Images/arrow right.png" width="15" /></button></div>
                     <div style="width:45px; float:left; position:relative; top:1px; text-align: center;">
@@ -249,9 +263,9 @@
                         <img style="opacity:.7;" src=@GetTypeIcon(J) width="20" />
                         <label style="font-size:14px; -webkit-text-fill-color: #E4E4E4;">@J.FileFormat</label>
                     </div>
-                    <Job_Buttons UpdateList="UpdateList" CheckID="AddorRemoveActiveChecked" _Status="J.Status" activeJob="J"></Job_Buttons>
+                    <Job_Buttons UpdateList="UpdateList" activeJob="J"></Job_Buttons>
                     <div class="TableCell" style="width:50px; position:relative; top:5px;">
-                        <label>@J.ID.ToString().Last()</label>
+                        <!--<label>@J.ID.ToString().Substring(J.ID.ToString().Length -2)</label>-->
                         <button style="width:20px; height:20px; border:hidden; background-color:transparent;" @onclick="() => AddorRemoveActiveChecked(J)" >
                             <img id="@CBID" src="Images/plus.png" style="width:24px; clip-path: inset(0px,0px,0px,0px); position:relative; bottom: 4px; right:10px; transition:all; transition-duration:.2s;" />
                         </button>
@@ -260,12 +274,7 @@
 
                     
                 <!--End Job header bar-->
-                @{
-                    var TaskDiv = J.ID + "H";
-                    var TD = J.ID + "P";
-                    var MaxA = J.ID + "MaxA";
-                }
-
+                
                 <div id="@TaskDiv"  style="display:none; height:00px; overflow:hidden; transition-duration:.4s; transition-property:all;">
                     <div id="@TD" style="position:relative; bottom:272px; transition-duration:.4s; transition-property:all;">
                         <div style="width:1520px; height:4px;"></div>
@@ -328,9 +337,10 @@
     public bool Archive { get; set; } = false;
     [Parameter]
     public EventCallback FullUpdate { get; set; }
-    [Parameter]
-    public EventCallback<Tuple<Job, bool>> CheckID { get; set; }
 
+
+
+    Random RNG = new Random();
     Dictionary<string, string> apps = new Dictionary<string, string>()
     {
         {"ae",@"Images/App/AE.png"},               //AfterEffects Icon
@@ -357,7 +367,7 @@
         {5,"#595959"}
 
     };
-    HashSet<int> SelectedJobs = new HashSet<int>();
+    HashSet<Job> SelectedJobs = new HashSet<Job>();
 
     private IJSObjectReference JS;
 
@@ -440,12 +450,15 @@
 
         //Sets bachButtonID depending on if this is the Archive queue or not.
         string BatchButtonsID = "31";
-        if (Archive)BatchButtonsID = "21";
-
-        if (SelectedJobs.Contains(j.ID))
+        string checkboxID = "3cb";
+        if (Archive){
+            BatchButtonsID = "21";
+            checkboxID = "2cb";
+        }
+        if (SelectedJobs.Contains(j))
         {
             //Remove selected.
-            SelectedJobs.Remove(j.ID);
+            SelectedJobs.Remove(j);
             await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
             await JSFunctiion("SetHeight", j.ID + "CB", "inset(0px 0px 0px 0px)");
             //set minus to plus
@@ -453,7 +466,7 @@
         else
         {
             //Add selected.
-            SelectedJobs.Add(j.ID);
+            SelectedJobs.Add(j);
             await JSFunctiion("ChangeBarColor", j.ID + "bar", "true");
             await JSFunctiion("SetHeight", j.ID + "CB", "inset(45.5% 0% 45.5% 0%)");
             //Set minus to plus;
@@ -467,11 +480,6 @@
             await JSFunctiion("SetElementOpacity", BatchButtonsID, "100");
             await JSFunctiion("EnableDisableElement", BatchButtonsID, "false");
         }
-        else if (SelectedJobs.Count() == JobList.Count())
-        {
-            //select all is selected. 
-
-        }
         else
         {
             //Hides batch buttons if no jobs are selected.
@@ -479,8 +487,16 @@
             await JSFunctiion("SetElementOpacity", BatchButtonsID, "0");
             await JSFunctiion("EnableDisableElement", BatchButtonsID, "true");
         }
+        if (SelectedJobs.Count() == JobList.Count())
+        {
+            //select all is selected.
+            await JSFunctiion("SetCheckValue", checkboxID, "true");
+        }
+        else
+        {
+            await JSFunctiion("SetCheckValue", checkboxID, "false");
+        }
     }
-
     protected void OpenLogView(renderTask _rT){
 
         //Displays log window with data from a renderTask.
@@ -524,7 +540,6 @@
             await JS.InvokeVoidAsync(_function);
         }
     }
-
     public string SimplifyTime(TimeSpan _time)
     {
         //Simplifes timespan to readable format.
@@ -557,22 +572,6 @@
             return "Images/Image Sequence White.png";
         }
 
-    }
-    public void ArchiveJob(Job j)
-    {
-        //Moves job to Archive List
-
-        if (!j.finished) WebButtons.CancelJob(j);
-        DB.AddToArchive(j, true);
-
-        try
-        {
-            DB.UpdateDBFile = true;
-        }
-        catch (Exception EX)
-        {
-            Console.WriteLine("ERROR: " + EX);
-        }
     }
     internal async Task JSRemoveFocus(KeyboardEventArgs e, string _ID)
     {
@@ -616,6 +615,44 @@
         //Returns cheeky message in JS console if silly numbers are called. 
 
         _J.Priority = await JS.InvokeAsync<int>("CheckValue",_J.ID, _J.Priority);
+    }
+    public void SelectAll(bool add)
+    {
+        foreach(Job j in JobList)
+        {
+            if (add)
+            {
+                if (!SelectedJobs.Contains(j)) AddorRemoveActiveChecked(j);
+            }
+            else
+            {
+                if (SelectedJobs.Contains(j)) AddorRemoveActiveChecked(j);
+            }
+
+        }
+    }
+    public async void BatchAction(int action)
+    {
+        foreach (Job j in SelectedJobs)
+        {
+            await JSFunctiion("SetHeight", j.ID + "CB", "inset(0% 0% 0% 0%)");
+            await JSFunctiion("ChangeBarColor", j.ID + "bar", "false");
+        }
+        if (Archive)
+        {
+            await JSFunctiion("SetElementOpacity", "21", "0");
+            await JSFunctiion("EnableDisableElement", "21", "true");
+            await JSFunctiion("SetCheckValue", "2cb", "false");
+        }
+        else
+        {
+            await JSFunctiion("SetElementOpacity", "31", "0");
+            await JSFunctiion("EnableDisableElement", "31", "true");
+            await JSFunctiion("SetCheckValue", "3cb", "false");
+        }
+        WebButtons.RunAction(action, SelectedJobs.ToArray());
+        SelectedJobs.Clear();
+        UpdateList();
     }
     public void Sort(int sortType, bool archive, bool ignoreReverse = false)
     {
