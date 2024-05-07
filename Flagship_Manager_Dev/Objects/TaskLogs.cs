@@ -93,12 +93,17 @@ namespace Flagship_Manager_Dev.Objects
             //Returns the worker name in the Last Index of Worker IDs
 
             if (WorkerLog.Count() < 1 || WorkerIDs.Last() == -1) return "";
-            string Name = DB.FindWorker(WorkerIDs.Last()).name;
-            if (Name != null && Name != "")
+            try
             {
-                return Name;
+                Worker? w = DB.FindWorker(WorkerIDs.Last());
+                if (w != null) return w.name;
+                else return "Unkown Worker";
+                
             }
-            else { return "Unknown Worker"; }
+            catch
+            {
+                return "Unknown Worker";
+            }
         }
     }
 }
