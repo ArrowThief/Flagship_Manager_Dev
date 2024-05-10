@@ -311,7 +311,7 @@
     }
     private void BuildWOrkerList()
     {
-        if(Count > 50)
+        if(Count > 50 || DB.workers.Count() != WorkerList.Length)
         {
             WorkerList = DB.workers.ToArray();
             Array.Sort(WorkerList, (a,b) => a.name.CompareTo(b.name));
