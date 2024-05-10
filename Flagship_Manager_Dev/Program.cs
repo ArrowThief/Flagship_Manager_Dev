@@ -15,9 +15,8 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-Thread WS = new Thread(new ThreadStart(() => WorkerServer.setupWorkerServer()));
 Thread Manager = new Thread(() => jobManager.Manager());
-WS.Start();
+
 Manager.Start();
 
 app.UseStaticFiles();

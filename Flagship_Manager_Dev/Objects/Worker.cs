@@ -408,15 +408,25 @@ namespace FlagShip_Manager.Objects
             //creates new workerObject, adds it to lists and returns a response tcpPacket.
             //TODO: Rewrite ID creation to be a simpler itteration. 
 
+            var temp = DB.workers;
             tcpPacket returnPacket = new tcpPacket();
-            var search = DB.FindWorker(receivedPacket.senderID);
-            
-            if (search != null)
+            var search = DB.FindWorkerIndex(receivedPacket.senderID);
+
+            if (search > -1)
             {
                 //Worker exists in worker history
-
+                Worker w = DB.workers[search];
                 returnPacket.command = "acknowledge_me";
                 returnPacket.arguments = new string[1];
+                ID = w.ID;
+                Status = 0;
+                name = w.name;
+                lastSeen = DateTime.Now;
+                LastSentPacket = w.LastSentPacket;
+                AvailableApps = w.AvailableApps;
+                GPU = bool.Parse(receivedPacket.arguments[3]);
+                DB.workers[search] = this;
+
             }
             else
             {
@@ -449,7 +459,7 @@ namespace FlagShip_Manager.Objects
                 DB.UpdateDBFile = true;
             }
 
-            DB.workers = DB.workers.OrderBy(x => x.name).ToList<Worker>();
+            
             return returnPacket;
         }
     }

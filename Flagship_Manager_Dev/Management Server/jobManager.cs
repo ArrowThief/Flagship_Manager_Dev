@@ -48,7 +48,10 @@ namespace FlagShip_Manager
             Thread cfnj = new Thread(() => checkForNewJobs(ctlPath));
             Thread jd = new Thread(() => jobDirector());
             Thread Progress = new Thread(() => CheckActiveJobsProgress());
+            Thread WS = new Thread(new ThreadStart(() => WorkerServer.setupWorkerServer()));
             
+            WS.Start(); //Starts workerr server.
+
             dbc.Start(); //Run the database Maanager to control loading and saving of database file.
             
             Thread.Sleep(2000);

@@ -17,7 +17,6 @@ namespace FlagShip_Manager.Objects
 
         //Job/Task status. queued(0), Rendering(1), finished(2) paused(3), fialed(4), canceled(5).
         public int Status { get; set; }
-        
         public int adjustedFirstFrame { get; set; }
         public int adjustedFrameRange { get; set; }
         public int FirstFrame { get; set; }
@@ -36,8 +35,14 @@ namespace FlagShip_Manager.Objects
 
         public Job Parent(bool archive)
         {
-            if(archive) return DB.archive[DB.FindJob(DB.archive, parentID)];
-            else return DB.active[DB.FindJob(DB.active, parentID)];
+            //Returns parent job. 
+
+            if (archive) return DB.archive[DB.FindJob(DB.archive, parentID)];
+            else
+            {
+                //int test = DB.FindJob(DB.active, parentID);
+                return DB.active[DB.FindJob(DB.active, parentID)];
+            }
         }
         public void Restart(bool archive, bool requeue)
         {

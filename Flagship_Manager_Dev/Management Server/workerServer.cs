@@ -23,7 +23,7 @@ namespace FlagShip_Manager
 
             while (true)
             {
-                Thread.Sleep(1000);
+                Thread.Sleep(10000);
                 for (int i = 0; i < DB.workers.Count(); i++)
                 {
                     Worker w = DB.workers[i];

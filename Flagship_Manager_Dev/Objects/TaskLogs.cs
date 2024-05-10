@@ -92,6 +92,7 @@ namespace Flagship_Manager_Dev.Objects
         {
             //Returns the worker name in the Last Index of Worker IDs
 
+            var temp = DB.workers;
             if (WorkerLog.Count() < 1 || WorkerIDs.Last() == -1) return "";
             try
             {

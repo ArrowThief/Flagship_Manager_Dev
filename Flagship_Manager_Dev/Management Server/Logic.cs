@@ -64,6 +64,7 @@ namespace FlagShip_Manager
             for (int wI = 0; wI < workers.Count(); wI++)
             {
                 Worker worker = workers[wI];
+                if (worker.Status == 7) continue;
                 RenderApp Default = worker.AvailableApps.Find(a => a.Default == true); //Check if the worker has a default render type.
                 RenderApp CurrentJob = worker.AvailableApps.Find(a => a.AppName == _job.RenderApp);
                 if (CurrentJob == null || worker.Dummy) continue;//Check if Worker can render this Job type.
@@ -84,7 +85,6 @@ namespace FlagShip_Manager
                     }
                     _return.Add(wI);//If one or more of the previous checks pass then worker is added to list of available workers for the job.
                 }
-
             }
 
             return _return;

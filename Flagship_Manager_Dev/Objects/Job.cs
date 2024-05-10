@@ -119,11 +119,11 @@ namespace FlagShip_Manager.Objects
         }
         internal void AssignNewID(int newID)
         {
+            ID = newID;
             foreach (var rt in renderTasks)
             {
                 rt.parentID = newID;
             }
-            ID = newID;
         }
         public void getProgress()
         {

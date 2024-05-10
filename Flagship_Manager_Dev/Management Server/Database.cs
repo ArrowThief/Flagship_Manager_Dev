@@ -51,7 +51,7 @@ namespace FlagShip_Manager.Management_Server
             while (true)
             {
                 if (UpdateDBFile) Save(DataBaseFilePath);
-                Thread.Sleep(60000);
+                Thread.Sleep(5000);
             }
         }
         public static void Save(string _filePath)
@@ -100,6 +100,7 @@ namespace FlagShip_Manager.Management_Server
                         workers.Add(worker);
                         workerID++;
                     }
+                    workers.Sort((a, b) => a.ID.CompareTo(b.ID));
                 }
             }
             Startup = false;
@@ -319,6 +320,28 @@ namespace FlagShip_Manager.Management_Server
                 mid = (min + max) / 2;
             }
             return null;
+        }
+        internal static int FindWorkerIndex(int target)
+        {
+            //Binary search through Archive Job list.
+
+            int min = 0;
+            int max = workers.Count() - 1;
+            int mid = (min + max) / 2;
+            while (min <= max)
+            {
+                if (target == workers[mid].ID) return mid;
+                else if (target < workers[mid].ID)
+                {
+                    max = mid - 1;
+                }
+                else
+                {
+                    min = mid + 1;
+                }
+                mid = (min + max) / 2;
+            }
+            return -1;
         }
     }
 }

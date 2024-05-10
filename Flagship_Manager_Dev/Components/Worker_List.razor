@@ -108,8 +108,11 @@
 </style>
 
 <div id="jl1">
-
-    @foreach(Worker W in DB.workers){
+    @{
+        BuildWOrkerList();
+    }
+    
+    @foreach(Worker W in WorkerList){
         var labelID = W.ID + "l";
         var IDdouble = W.ID + "b";
         var statusID = W.ID + "s";
@@ -217,6 +220,8 @@
     private IJSObjectReference JS;
 
     private Timer? time;
+    private Worker[] WorkerList = new Worker[0];
+    private int Count = 0;
 
     Dictionary<int, string> WorkerStatus = new Dictionary<int, string>()
     {
@@ -256,14 +261,14 @@
 
     public string GetGPUStatusIcon(bool _GPU)
     {
-    
+
         //Returns path to icon depending on if a worker is equiped with a >4GB GPU.
-        
+
         if(_GPU){
             return @"Images\Status\Finished_whitey.png";
         }
         return @"Images\Status\Failed_whitey.png";
-        
+
     }
     public string SimplifedTime(DateTime _lastSeen)
     {
@@ -303,5 +308,17 @@
 
         JS = await RunJS.InvokeAsync<IJSObjectReference>("import", "./Components/Worker_List.razor.js");
         await JS.InvokeVoidAsync(_function, _grid_ID);
+    }
+    private void BuildWOrkerList()
+    {
+        if(Count > 50)
+        {
+            WorkerList = DB.workers.ToArray();
+            Array.Sort(WorkerList, (a,b) => a.name.CompareTo(b.name));
+            Count = 0;
+        }else Count++;
+        
+
+        
     }
 }
