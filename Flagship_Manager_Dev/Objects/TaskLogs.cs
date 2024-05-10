@@ -97,12 +97,15 @@ namespace Flagship_Manager_Dev.Objects
             try
             {
                 Worker? w = DB.FindWorker(WorkerIDs.Last());
-                if (w != null) return w.name;
-                else return "Unkown Worker";
+                //if (w != null)
+                return w.name;
+                //else return "Unkown Worker";
                 
             }
-            catch
+            catch(Exception ex)
             {
+                WriteToManager($"Unable to find worker, Exception: \n{ex}");
+                Console.WriteLine($"Unable to find worker, Exception: \n{ex}");
                 return "Unknown Worker";
             }
         }
