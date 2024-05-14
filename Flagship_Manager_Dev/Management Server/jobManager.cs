@@ -142,7 +142,7 @@ namespace FlagShip_Manager
                                             }
                                             rT.taskLogs.add();
                                             worker.sendTasktoClientBuffer(_job, rT, ri);
-                                            rT.taskLogs.WriteToWorker($" Task {ri} submitted to {worker.name} for rendering.\n------------------------------Worker Log start------------------------------\n", false);
+                                            rT.taskLogs.WriteToWorker($" Task {ri} submitted to {worker.name} for rendering at {DateTime.Now.ToString("hh:mm dd/mm")}.\n------------------------------Worker Log start------------------------------\n", false);
                                             _job.Status = 1;
                                             rT.Status = 1;
                                             rT.taskLogs.SubmitTime[rT.Attempt()] = DateTime.Now;
@@ -165,7 +165,6 @@ namespace FlagShip_Manager
                         }
                     }
                 }
-                else Console.WriteLine("No jobs in queue.");
             }
         }
         private static void CleanJobList()
