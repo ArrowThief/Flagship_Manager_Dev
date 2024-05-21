@@ -188,8 +188,11 @@ namespace FlagShip_Manager
                     RemoveList.Add(index);
                 }   
             }
+            int removed = 0;
             foreach (int index in RemoveList)
             {
+                //Itterates through list of indices to remove. As items are removed a removed counter increses that keeps the index within range.
+                //This allows for removing multiple targeted indices as the array shrinks. 
                 try
                 {
                     File.Delete(DB.archive[index].Project);
@@ -199,7 +202,8 @@ namespace FlagShip_Manager
                 {
                     Console.WriteLine($"Cannot remove project file. it will remain on server. \nERROR: \n{ex}");
                 }
-                DB.archive.RemoveAt(index);
+                DB.archive.RemoveAt(index-removed);
+                removed++;
             }
         }       
         

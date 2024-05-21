@@ -260,6 +260,16 @@ namespace FlagShip_Manager.Management_Server
             archive.Add(addJob);
 
         }
+        public static void AddToWorkers(Worker worker)
+        {
+            worker.ID = NextWorker();
+            workers.Add(worker);
+        }
+        public static void RemoveWorker(Worker removeWorker)
+        {
+            var removeIndex = FindWorkerIndex(removeWorker.ID);
+            workers.RemoveAt(removeIndex);
+        }
         public static void RemoveJob(Job remove)
         {
             //Removes Job from Database. 
@@ -298,7 +308,6 @@ namespace FlagShip_Manager.Management_Server
             }
             return -1;
             }
-        
         internal static Worker? FindWorker(int target)
         {
             //Binary search through Archive Job list.

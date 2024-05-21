@@ -212,8 +212,8 @@
     }
     
 </style>
-@{
-}<div style="overflow:clip; height:auto; width:1600px;">
+
+<div style="overflow:clip; height:auto; width:1600px;">
     <div style="display:block;background-color:#1E1E1E; width:1550px; height:110px;">
         <img style="width:380px;" src="/Images/Flagship_Header_Logo-White.png" />
         <div class="hover_Pointer" @onclick='() => JSFunctiion("OpenInfo","4")' style="background:white; height:30px; width:30px; position:relative; left:1500px; bottom:55px; border-radius:15px; text-align:center;">
@@ -234,12 +234,12 @@
                 <div class="headerClass sort-link" style="width:50px">GPU</div>
                 <div class="headerClass sort-link" style="width:140px">Buttons</div>
                 <div class="headerClass sort-link" style="width:120px">Last Seen</div>
-                <div class="headerClass sort-link" style="width:840px">Log</div>
+                <div class="headerClass sort-link" style="width:840px" @onclick="() => {OldWorkers = !OldWorkers;}">Log</div>
             </div>
 
             <div class="Background" style="height:auto;">
                 <!--Worker List-->
-                <Worker_List></Worker_List>
+                <Worker_List ShowOldWorkers="OldWorkers"></Worker_List>
             </div>
         </div>
     </div>
@@ -351,6 +351,7 @@
 @code 
 {
     private bool viewDebug = false;
+    private bool OldWorkers = false;
     private string WL_StartHeight = (DB.workers.Count() * 36 + 36) + "px";
     private string AR_StartHeight = (DB.archive.Count() * 36 + 36) + "px";
     private string AQ_StartHeight = (DB.active.Count() * 36 + 36) + "px";

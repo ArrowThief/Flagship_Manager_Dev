@@ -322,7 +322,6 @@ export function CloseAllJobs(_ListID, _List, _ignoreList) {
     }
     
 }
-
 export function UpdateListHeights() {
     //Get list
 
@@ -369,8 +368,9 @@ export function CheckHeight(wOpen, arOpen, acOpen) {
         var w = document.getElementById("1h");
         var wjl = document.getElementById("jl1");
         //console.log((w.clientHeight -32) + " vs " + wjl.clientHeight);
-        if ((w.clientHeight) < wjl.clientHeight) {
-            //console.log("Updating Archive List Height")
+        if ((w.clientHeight - 36) != wjl.clientHeight) {
+            console.log("Updating Worker List Height")
+            //console.log(w.clientHeight + "\n" + wjl.clientHeight);
             UpdateListHeights()
         }
     }

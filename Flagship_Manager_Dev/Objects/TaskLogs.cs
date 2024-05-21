@@ -104,8 +104,12 @@ namespace Flagship_Manager_Dev.Objects
             }
             catch(Exception ex)
             {
-                WriteToManager($"Unable to find worker, Exception: \n{ex}");
-                Console.WriteLine($"Unable to find worker, Exception: \n{ex}");
+                string message = $"Start ERROR Log ------------------------------------------\nUnable to find worker, Searching for ID: {WorkerIDs.Last()}\nCurrent Worker List order: ";
+                foreach (Worker w in DB.workers) message += $"\n{w.ID}";
+                message += "End ERROR Log ------------------------------------------\n";
+                WriteToManager(message);
+                Console.WriteLine(message);
+
                 return "Unknown Worker";
             }
         }

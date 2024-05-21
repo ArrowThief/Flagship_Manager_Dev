@@ -113,6 +113,7 @@
     }
     
     @foreach(Worker W in WorkerList){
+        
         var labelID = W.ID + "l";
         var IDdouble = W.ID + "b";
         var statusID = W.ID + "s";
@@ -195,15 +196,14 @@
                 <!--Time since worker last updated-->
 
                 <label class="LabelDrop">@SimplifedTime(W.lastSeen)</label>
-            </div> 
+            </div>
 
-            <div class="WI_cell" style="width:834px; text-align:left; padding-left:2px;border-right:hidden;">
+            <div class="WI_cell" style="width:834px; text-align:left; padding-left:2px;border-right:hidden;" >
 
                 <!--Latest Log data-->
 
                 <label class="LabelDrop">@W.ConsoleBuffer</label>
             </div>
-    
         </div>
     }
     
@@ -219,9 +219,14 @@
 @code {
     private IJSObjectReference JS;
 
+    [Parameter]
+    public bool ShowOldWorkers { get; set; } = false;
+
+    private bool LastOldWorkers = false;
     private Timer? time;
     private Worker[] WorkerList = new Worker[0];
     private int Count = 0;
+    private int IgnoredWorkers = 0;
 
     Dictionary<int, string> WorkerStatus = new Dictionary<int, string>()
     {
@@ -258,7 +263,6 @@
 
         await InvokeAsync(() => StateHasChanged());
     }
-
     public string GetGPUStatusIcon(bool _GPU)
     {
 
@@ -282,7 +286,6 @@
         {
             return _lastSeen.ToString("hh:mm tt");
         }
-
         else
         {
             TimeSpan temp = DateTime.Now - _lastSeen;
@@ -311,14 +314,33 @@
     }
     private void BuildWOrkerList()
     {
-        if(Count > 50 || DB.workers.Count() != WorkerList.Length)
+        //Builds a proxy List of workers used in the UI.
+
+        if (Count > 50 || DB.workers.Count() != WorkerList.Length + IgnoredWorkers || LastOldWorkers != ShowOldWorkers)
         {
-            WorkerList = DB.workers.ToArray();
+            IgnoredWorkers = 0;
+            if (!ShowOldWorkers)
+            {
+                List<Worker> tempList = new List<Worker>();
+                foreach(Worker w in DB.workers)
+                {
+                    if (w.lastSeen.AddDays(7) < DateTime.Now)
+                    {
+                        IgnoredWorkers++;
+                        continue;
+                    }
+                    tempList.Add(w);
+                }
+                WorkerList = tempList.ToArray();
+            }
+            else
+            {
+                WorkerList = DB.workers.ToArray();
+                IgnoredWorkers = 0;
+            }
             Array.Sort(WorkerList, (a,b) => a.name.CompareTo(b.name));
             Count = 0;
         }else Count++;
-        
-
-        
+        LastOldWorkers = ShowOldWorkers;
     }
 }
