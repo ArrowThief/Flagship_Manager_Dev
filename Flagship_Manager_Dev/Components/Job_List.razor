@@ -725,12 +725,12 @@
                 if (archive)
                 {
                     //Sort by Archive time
-                    Array.Sort(JobList, (a, b) => b.ArchiveDate.CompareTo(a.ArchiveDate));
+                    Array.Sort(JobList, (a, b) => a.ArchiveDate.CompareTo(b.ArchiveDate));
                 }
                 else
                 {
                     //Sort by submit time
-                    Array.Sort(JobList, (a, b) => b.CreationTime.CompareTo(a.CreationTime));
+                    Array.Sort(JobList, (a, b) => a.CreationTime.CompareTo(b.CreationTime));
                 }
                 CurrentSort = -1;
                 break;
