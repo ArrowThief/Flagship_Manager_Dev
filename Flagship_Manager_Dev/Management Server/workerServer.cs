@@ -416,7 +416,7 @@ namespace FlagShip_Manager
 
             var search = DB.FindWorkerIndex(receivedPacket.senderID);
            
-            if (search != -1)
+            if (search != -1 && DB.workers[search].name == worker.name)
             {
                 //Worker has an ID already.
 
