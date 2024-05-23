@@ -90,7 +90,12 @@ namespace FlagShip_Manager
                 sendPacket = BuildResponse(recPacket, worker);
                 try
                 {
-                    if (sendPacket == null) break;
+                    if (sendPacket == null)
+                    {
+                        _socket.Disconnect(true);
+                        Console.WriteLine("Worker failed to send readable data.");
+                        break;
+                    }
                     if (sendPacket.command == null)
                     {
                         Console.WriteLine($"{worker.name} is being sent a blank command");
@@ -112,16 +117,15 @@ namespace FlagShip_Manager
                     Console.WriteLine("ERROR: " + ex);
                 }
             }
-            Console.WriteLine("Worker Dissconnect");
 
             if (worker.Status == 1)
             {
-                string l = $"{worker.name} has dissconnected unexpectedly during a render. Its assigned task will be reclaimed.";
+                string l = $"{worker.name} has disconnected unexpectedly during a render. Its assigned task will be reclaimed.";
                 worker.WorkerTaskFail(l);
-                worker.LogBuffer = l;
+                worker.LogBuffer = "Disconnected unexpectedly during a render. Assigned task will be reclaimed.";
 
             }
-            else worker.LogBuffer = $"{worker.name} was not doing work, so no task needs to be reclaimed.";
+            else worker.LogBuffer = "Disconnected"; ;
 
             worker.Status = 7;
         }   
@@ -221,7 +225,7 @@ namespace FlagShip_Manager
 
                         //Allows for disconnecting gracefully.
 
-                        worker.ConsoleBuffer = "Disconnected.";
+                        worker.LogBuffer = "Disconnected.";
                         worker.Status = 7;
                         return null;
 
@@ -242,7 +246,7 @@ namespace FlagShip_Manager
 
                         if (worker.Status == 0 && !worker.awaitUpdate)
                         {
-                            worker.ConsoleBuffer = $"{worker.name} is awaiting work.";
+                            worker.LogBuffer = $"Awaiting work.";
                             sendPacket.command = "getupdate";
                         }
                         else if (worker.awaitUpdate)
@@ -366,7 +370,7 @@ namespace FlagShip_Manager
                         //Deprecated, status is set in status update. 
 
                         worker.Status = 0;
-                        worker.ConsoleBuffer = $"{worker.name} is once again available to render.";
+                        worker.LogBuffer = $"Available to render.";
                         sendPacket.command = "getupdate";
                         break;
 
@@ -377,7 +381,7 @@ namespace FlagShip_Manager
 
                         worker.Status = 3;
                         sendPacket.command = "sleep";
-                        worker.ConsoleBuffer = $"{worker.name} is sleeping";
+                        worker.LogBuffer = $"Sleeping";
                         break;
 
                     case "failedpacketread":
@@ -420,7 +424,7 @@ namespace FlagShip_Manager
             {
                 //Worker has an ID already.
 
-                worker.ConsoleBuffer = "Worker reconnected";
+                worker.LogBuffer = "Reconnected";
                 returnPacket.command = "acknowledge_me";
                 returnPacket.arguments = new string[0];
                 worker.ID = receivedPacket.senderID;
@@ -430,7 +434,7 @@ namespace FlagShip_Manager
             {
                 //Worker will be assigned a new ID.
 
-                worker.ConsoleBuffer = "New worker connected";
+                worker.LogBuffer = "New worker connected";
                 returnPacket.command = "assignid";
                 DB.AddToWorkers(worker);
                 returnPacket.arguments = new string[] {$"{worker.ID}"};

@@ -148,7 +148,7 @@ namespace FlagShip_Manager
                                             rT.taskLogs.SubmitTime[rT.Attempt()] = DateTime.Now;
                                             rT.taskLogs.WriteID(worker.ID);
                                             if (clearAvailableWorkers) break;
-                                            worker.ConsoleBuffer = ($"Sending: {_job.Name} task index: {ri} of {_job.renderTasks.Count()} to {DB.workers[wi].name}");
+                                            worker.LogBuffer = ($"Sending: {_job.Name} task index: {ri} of {_job.renderTasks.Count()}");
                                             worker.awaitUpdate = true;
                                             break;
                                         }
@@ -156,7 +156,7 @@ namespace FlagShip_Manager
                                         {
                                             worker.renderTaskIndex = -1;
                                             worker.activeJob = _job;
-                                            worker.ConsoleBuffer = $"Failed to send task to {worker.name} buffer";
+                                            worker.LogBuffer = $"Failed to send task to {worker.name} buffer";
                                             rT.Status = 0;
                                         }
                                     }

@@ -17,7 +17,7 @@ namespace FlagShip_Manager.Objects
         public bool awaitUpdate { get; set; }
         public bool GPU { get; set; } = false;
         public List<RenderApp> AvailableApps { get; set; } = new List<RenderApp>();
-        public string ConsoleBuffer { get; set; } = "";
+        //public string ConsoleBuffer { get; set; } = "";
         public DateTime lastSeen { get; set; }
         public DateTime lastSubmittion { get; set; } = DateTime.MinValue;
         public bool Dummy { get; set; } = false;
@@ -31,6 +31,7 @@ namespace FlagShip_Manager.Objects
             RenderApp BuildApp = new RenderApp();
             foreach (string App in _AppList)
             {
+                if (App == null) continue;
                 BuildApp = new RenderApp();
                 switch (App.ToLower())
                 {
@@ -60,14 +61,14 @@ namespace FlagShip_Manager.Objects
         {
             //Puts worker in a sleep state, the client software remains active but no tasks will be sent while in this state.
 
-            ConsoleBuffer = "Sleeping worker.";
+            LogBuffer = "Sleeping worker.";
             foreach (RenderApp RA in AvailableApps)
             {
                 RA.EnableDisable();
             }
             if (Status == 1)
             {
-                ConsoleBuffer = "Sleeping worker.";
+                LogBuffer = "Sleeping worker.";
                 WorkerTaskFail("Worker being sent to sleep.", true);    
             }
             if (Status != 3) Status = 3;
@@ -77,7 +78,7 @@ namespace FlagShip_Manager.Objects
         {
             //Shuts down client software on worker PC.
 
-            ConsoleBuffer = "Killing Worker.";
+            LogBuffer = "Killing Worker.";
             packetBuffer = new tcpPacket();
             packetBuffer.command = "dissconnect";
             packetBuffer.arguments = new string[0];
@@ -107,7 +108,7 @@ namespace FlagShip_Manager.Objects
             }
             catch
             {
-                ConsoleBuffer = "Couldn't find render task to cancel.";
+                LogBuffer = "Couldn't find render task to cancel.";
             }
         }
         public void sendTasktoClientBuffer(Job j, renderTask t, int index)

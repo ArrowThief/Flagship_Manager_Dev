@@ -80,7 +80,8 @@
 <div id="@BLID" class="BlackList">
     <div class="WorkerList">
         @foreach (Worker w in DB.workers)
-        {       
+        {
+            if (w.Status == 7 || !w.AvailableApps.Any((a) => a.AppName == activeJob.RenderApp)) continue;
             <div style="display:table-row; height:31px;">
                 <div style="display:table-cell; width: 31px;">
                     <div class="CircleClass">
@@ -95,11 +96,14 @@
                                 }
                                 <div class="label"></div>
                             </label>
-                        }else{
+                        }
+                        else
+                        {
                             <label><div class="label" style="opacity:0;"></div></label>
                         }
                     </div>
                 </div>
+
                 <div style="display:table-cell; height:30px; vertical-align:central;">
                     @if (activeJob.WorkerBlackList.Contains(w.ID))
                     {
@@ -118,12 +122,14 @@
 
 
 @code {
+
     [Parameter]
     public Job activeJob { get; set; }
     [Parameter]
     public string? renderApp { get; set; } = "";
     [Parameter]
     public EventCallback UpdateJob { get; set; }
+
     public void AddorRemoveFromBlackList(int _WID)
     {
         //Toggles weither a Job is allowed to render a Job.
