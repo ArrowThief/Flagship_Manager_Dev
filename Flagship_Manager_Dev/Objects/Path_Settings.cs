@@ -9,7 +9,7 @@ namespace FlagShip_Manager.Objects
 
         public string TempOutputPath { get; set; } = "";
         public string TempProjectPath { get; set; } = "";
-        public string CtlFolder { get; set; } = "";
+        public string ctlFolder { get; set; } = "";
 
         public Path_Settings(string _tmpOutputPath = "", string _tempProjectPath = "", string _ctlFolder = "")
         {
@@ -17,7 +17,7 @@ namespace FlagShip_Manager.Objects
 
             TempOutputPath = _tmpOutputPath;
             TempProjectPath = _tempProjectPath;
-            CtlFolder = _ctlFolder;
+            ctlFolder = _ctlFolder;
         }
         public void Save(string _filePath = "")
         {
@@ -63,7 +63,7 @@ namespace FlagShip_Manager.Objects
                 {
                     TempOutputPath = Input.TempOutputPath;
                     TempProjectPath = Input.TempProjectPath;
-                    CtlFolder = Input.CtlFolder;
+                    ctlFolder = Input.ctlFolder;
                     return true;
                 }
             }
@@ -76,7 +76,7 @@ namespace FlagShip_Manager.Objects
 
             if (TempOutputPath == "") return false;
             if (TempProjectPath == "") return false;
-            if (CtlFolder == "") return false;
+            if (ctlFolder == "") return false;
             else return true;
 
         }

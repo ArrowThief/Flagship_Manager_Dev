@@ -80,14 +80,14 @@ LoadSettingsFile()
     var settingsWindow = new Window("palette", "Settings", undefined);
 
     var PathGroup = settingsWindow.add("group")
-    PathGroup.orentation = "column";
+    PathGroup.orentation = " row";
     var WO_Entry = PathGroup.add("edittext", undefined, WorkorderPath);
     var TP_Entry = PathGroup.add("edittext", undefined, tempProjectPathString);
 
 
     var buttonsGroup = settingsWindow.add("group")
-    var TextcloseButton = buttonsGroup.add("button", undefined, "Save");
-    var TextdefaultButton = buttonsGroup.add("button", undefined, "Defaults");
+    var closeButton = buttonsGroup.add("button", undefined, "Save");
+    var defaultButton = buttonsGroup.add("button", undefined, "Defaults");
 
     //Text window settings
     var noChange = true;
@@ -361,18 +361,21 @@ function checkSplitNum(Num) {
                     settingsWindow.show();
                 }
 
-                TextcloseButton.onClick = function () {
+                closeButton.onClick = function () {
                     WorkorderPath = WO_Entry.text;
                     tempProjectPathString = TP_Entry.text;
                     saveSettingsFile();
                     settingsWindow.hide();
                 }
-                TextdefaultButton.onClick = function () {
+                defaultButton.onClick = function () {
                     WorkorderPath = defaultWorkOrderPath;
-                    OrderPath.text = defaultWorkOrderPath;
-
                     tempProjectPathString = defaultProjectPath;
-                    projectFilePath.text = defaultProjectPath;
+
+                    //OrderPath.text = defaultWorkOrderPath;
+                    //projectFilePath.text = defaultProjectPath;
+
+                    WO_Entry.text = defaultWorkOrderPath;
+                    TP_Entry.text = defaultProjectPath;
 
                     settingsWindow.hide();
                 }
