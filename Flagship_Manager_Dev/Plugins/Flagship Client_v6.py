@@ -23,35 +23,38 @@ bl_info = {
 }
 
 startup = True
-ctlPath = "M:\\Render Watch folders\\RenderControl\\RenderCMD\\"
+ctlPath = "L:\\Render Watch folders\\RenderControl\\RenderCMD\\"
 force = False
 tempProjectPath ="L:\Libraries\RenderTemp"
 tempOutputPath ="L:\Libraries\RenderTemp\\Temp Output\\"
 timeout = 30
 priority = 50
 split = 1
-@persistent
-def ImportSettings(self, context):
-    print("Running Import")
-    SettingsPath = str(Path.home() / "Documents") +"/FlagShip_Settings.txt"
-    if(os.path.exists(SettingsPath)):
-        with open(SettingsPath, 'r') as file:
-            Settings= file.read() 
-    json_Settings = json.loads(Settings)
 
-    global ctlPath
-    global tempOutputPath
-    global tempProjectPath
-    global startup
+#@persistent
+#def ImportSettings(self, context):
+#    print("Running Import")
+#    SettingsPath = str(Path.home() / "Documents") +"/FlagShip_Settings.txt"
+#    if(os.path.exists(SettingsPath)):
+#        with open(SettingsPath, 'r') as file:
+#            Settings= file.read() 
+#    json_Settings = json.loads(Settings)
 
-    tempProjectPath = json_Settings['TempProjectPath']
-    tempOutputPath = json_Settings['TempOutputPath']
-    ctlPath = json_Settings['ctlFolder']
+#    global ctlPath
+#    global tempOutputPath
+#    global tempProjectPath
+#    global startup
 
-    print("Import Flagship Temp Projects Path: " + tempProjectPath)
-    print("Import Flagship Temp Output path: " + tempOutputPath)
-    print("Import Flagship ctlFolder: " + ctlPath)
-    startup = False
+#    tempProjectPath = json_Settings['TempProjectPath']
+#    tempOutputPath = json_Settings['TempOutputPath']
+#    ctlPath = json_Settings['ctlFolder']
+    
+#    ctlPath_Prop.text = ctlPath
+
+#    print("Import Flagship Temp Projects Path: " + tempProjectPath)
+#    print("Import Flagship Temp Output path: " + tempOutputPath)
+#    print("Import Flagship ctlFolder: " + ctlPath)
+#    startup = False
 
 
 #----------------------------------------------------------------------------------------------------------------------------------
@@ -69,8 +72,9 @@ class FlagshipUIproperties(bpy.types.PropertyGroup):
     global startup
 
     
-    ctlPath_Prop: bpy.props.StringProperty(name="Database Folder")
+    ctlPath_Prop: bpy.props.StringProperty(name="Work order", default = ctlPath)
     tempProjectPath_Prop: bpy.props.StringProperty(name="tempProject",default =tempProjectPath)
+    tempOutputPath_Prop: bpy.props.StringProperty(name="tempOutput",default =tempOutputPath)
     priority_Prop: bpy.props.IntProperty(name="priority", soft_min=0, soft_max=100, default =priority)
     split_Prop: bpy.props.IntProperty(name="frames per task", soft_min=1, soft_max=50, default = split)
     timeout_Prop: bpy.props.IntProperty(name="Timeout", soft_min=1, soft_max=120, default = timeout)
@@ -449,7 +453,7 @@ class SubmitRender(bpy.types.Operator):
 
 class FlagshipClientPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
-    bl_label = "Flagship Client v5"
+    bl_label = "Flagship Client v6"
     bl_idname = "FlagShipPanel"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -459,16 +463,33 @@ class FlagshipClientPanel(bpy.types.Panel):
 
     def draw(self, context):
         global startup
-
-        if startup:
-            print("Startup?")
-            startup = False
-            
         Props = context.scene.worth_group_tools
         temp = Props.ctlPath_Prop
-
-        layout = self.layout
         
+        if startup:
+            print("Startup?")
+            
+            SettingsPath = str(Path.home() / "Documents") +"/FlagShip_Settings.txt"
+            if(os.path.exists(SettingsPath)):
+                with open(SettingsPath, 'r') as file:
+                    Settings= file.read() 
+            json_Settings = json.loads(Settings)
+
+            global ctlPath
+            global tempOutputPath
+            global tempProjectPath
+
+            tempProjectPath = json_Settings['TempProjectPath']
+            tempOutputPath = json_Settings['TempOutputPath']
+            ctlPath = json_Settings['ctlFolder']
+
+            print("Import Flagship Temp Projects Path: " + tempProjectPath)
+            print("Import Flagship Temp Output path: " + tempOutputPath)
+            print("Import Flagship ctlFolder: " + ctlPath)
+            temp = ctlPath
+            startup = False
+            
+        layout = self.layout
         col1 = layout.column()
 
         #CtlPath text input
@@ -476,6 +497,8 @@ class FlagshipClientPanel(bpy.types.Panel):
 
         #Temp projects path text input
         col1.prop(Props, "tempProjectPath_Prop")
+        col1.prop(Props, "tempOutputPath_Prop")
+
         row1 = layout.row()
 
         #Priority int input
@@ -493,6 +516,28 @@ class FlagshipClientPanel(bpy.types.Panel):
         row = layout.row()
         row.scale_y = 2.0
         row.operator("render.submitrender", text = "Render on network")
+    
+    def ImportSettings():
+        print("Running Import")
+        SettingsPath = str(Path.home() / "Documents") +"/FlagShip_Settings.txt"
+        if(os.path.exists(SettingsPath)):
+            with open(SettingsPath, 'r') as file:
+                Settings= file.read() 
+        json_Settings = json.loads(Settings)
+
+        global ctlPath
+        global tempOutputPath
+        global tempProjectPath
+        global startup
+
+        tempProjectPath = json_Settings['TempProjectPath']
+        tempOutputPath = json_Settings['TempOutputPath']
+        ctlPath = json_Settings['ctlFolder']
+
+        print("Import Flagship Temp Projects Path: " + tempProjectPath)
+        print("Import Flagship Temp Output path: " + tempOutputPath)
+        print("Import Flagship ctlFolder: " + ctlPath)
+        startup = False
 
 #----------------------------------------------------------------------------------------------------------------------------------
 
